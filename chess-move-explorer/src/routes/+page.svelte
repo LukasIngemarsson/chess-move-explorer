@@ -67,6 +67,7 @@
 
 	// moveHistory is the single source of truth; board state is fully derived from it.
 	let moveHistory = $state<string[]>([]);
+	let moveLogEl = $state<HTMLElement | null>(null);
 
 	// --- Derived board state ---
 	let boardState = $derived.by(() => {
@@ -207,7 +208,9 @@
 	}
 
 	function playMove(algebraicNotation: string): void {
+		const isFirst = moveHistory.length === 0;
 		moveHistory = [...moveHistory, algebraicNotation];
+		if (isFirst) moveLogEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 	}
 
 	function stepBack(): void {
@@ -406,7 +409,7 @@
 			</div>
 
 		{#if moveHistory.length > 0}
-			<div class="flex flex-wrap items-baseline gap-x-1 gap-y-1 font-mono text-sm text-base-content/70 px-1">
+			<div bind:this={moveLogEl} class="flex flex-wrap items-baseline gap-x-1 gap-y-1 font-mono text-sm text-base-content/70 px-1">
 				{#each moveHistory as move, i}
 					{#if i % 2 === 0}
 						<span class="text-base-content/40 select-none">{Math.floor(i / 2) + 1}.</span>

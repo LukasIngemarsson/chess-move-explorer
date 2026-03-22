@@ -344,7 +344,7 @@
 				<div class="card bg-base-100 shadow">
 					<div class="card-body">
 						<h2 class="card-title text-base">
-							{isPlayerTurn ? 'Your moves from here' : "Opponent's replies"}
+							{isPlayerTurn ? 'Your moves from here' : "Opponent's moves from here"}
 						</h2>
 						<MoveList
 							moves={positionData.moves}

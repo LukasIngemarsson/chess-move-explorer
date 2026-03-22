@@ -142,7 +142,7 @@
 				</p>
 
 				<form
-					class="flex flex-wrap gap-3 mt-2"
+					class="flex flex-wrap gap-3 mt-2 justify-center"
 					onsubmit={(e) => { e.preventDefault(); fetchGames(); }}
 				>
 					<!-- Platform toggle -->
@@ -164,7 +164,7 @@
 					</div>
 
 					<input
-						class="input input-bordered input-sm w-44"
+						class="input input-bordered input-sm w-64"
 						type="text"
 						placeholder="{platform === 'lichess' ? 'Lichess' : 'Chess.com'} username"
 						bind:value={username}

@@ -197,7 +197,7 @@
 
 					<!-- Limit + submit joined -->
 					<div class="join">
-						<select class="join-item select select-bordered select-sm" bind:value={maxGames}>
+						<select class="join-item select select-bordered select-sm w-36" bind:value={maxGames}>
 							<option value={100}>100 games</option>
 							<option value={200}>200 games</option>
 							<option value={500}>500 games</option>
@@ -205,7 +205,7 @@
 							<option value={2000}>2 000 games</option>
 							<option value={0}>All games</option>
 						</select>
-						<button class="join-item btn btn-sm btn-primary" type="submit" disabled={loading || !username.trim()}>
+						<button class="join-item btn btn-sm btn-primary w-28" type="submit" disabled={loading || !username.trim()}>
 							{#if loading}
 								<span class="loading loading-spinner loading-xs"></span>
 								Loading…

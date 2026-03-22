@@ -19,7 +19,9 @@ function computePlayerResult(
 
 export const GET: RequestHandler = async ({ url }) => {
 	const username = url.searchParams.get('username');
-	const max = Math.min(parseInt(url.searchParams.get('max') ?? '500'), 500);
+	const rawMax = parseInt(url.searchParams.get('max') ?? '500');
+	// max=0 means "all games"; otherwise cap at 10 000 to avoid runaway requests.
+	const max = rawMax === 0 ? 10_000 : Math.min(rawMax, 10_000);
 	const rawColor = url.searchParams.get('color');
 
 	if (!username) error(400, 'username is required');

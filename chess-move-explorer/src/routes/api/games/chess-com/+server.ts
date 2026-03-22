@@ -90,7 +90,9 @@ function normalizeGame(
 
 export const GET: RequestHandler = async ({ url }) => {
 	const username = url.searchParams.get('username');
-	const max = Math.min(parseInt(url.searchParams.get('max') ?? '500'), 500);
+	const rawMax = parseInt(url.searchParams.get('max') ?? '500');
+	// max=0 means "all games"; otherwise cap at 10 000 to avoid runaway requests.
+	const max = rawMax === 0 ? Infinity : Math.min(rawMax, 10_000);
 	const rawColor = url.searchParams.get('color');
 
 	if (!username) error(400, 'username is required');
@@ -111,8 +113,11 @@ export const GET: RequestHandler = async ({ url }) => {
 	const { archives } = await archivesResponse.json() as ChessComArchivesResponse;
 	if (archives.length === 0) return json({ games: [] });
 
-	// Fetch the most recent archives in parallel (up to 6 months).
-	const recentArchiveUrls = [...archives].reverse().slice(0, 6);
+	// Fetch enough archives to cover the requested number of games.
+	// Chess.com archives average ~50-100 games/month, so over-fetch slightly.
+	// When max is Infinity (all games), fetch every archive.
+	const archiveCount = isFinite(max) ? Math.min(Math.ceil(max / 50) + 2, archives.length) : archives.length;
+	const recentArchiveUrls = [...archives].reverse().slice(0, archiveCount);
 	const archiveResponses = await Promise.all(
 		recentArchiveUrls.map((archiveUrl) =>
 			fetch(archiveUrl, { headers: REQUEST_HEADERS })
@@ -126,13 +131,12 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	// Collect normalized games, most-recent-first, up to the max limit.
 	const normalizedGames: Game[] = [];
-	for (const { games } of archiveResponses) {
+	outer: for (const { games } of archiveResponses) {
 		for (const game of [...games].reverse()) {
-			if (normalizedGames.length >= max) break;
+			if (normalizedGames.length >= max) break outer;
 			const normalized = normalizeGame(game, username, playerColor);
 			if (normalized) normalizedGames.push(normalized);
 		}
-		if (normalizedGames.length >= max) break;
 	}
 
 	return json({ games: normalizedGames });

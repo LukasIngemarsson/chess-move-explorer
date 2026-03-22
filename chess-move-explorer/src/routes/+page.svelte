@@ -20,6 +20,8 @@
 	let username = $state('');
 	let platform = $state<Platform>('lichess');
 	let playerColor = $state<'white' | 'black'>('white');
+	// 0 = all games
+	let maxGames = $state(500);
 	let loading = $state(false);
 	let errorMessage = $state('');
 
@@ -72,29 +74,6 @@
 			: null
 	);
 
-	async function fetchGamesForColor(color: 'white' | 'black'): Promise<void> {
-		loading = true;
-		errorMessage = '';
-
-		try {
-			const gamesApiPath = platform === 'lichess' ? '/api/games/lichess' : '/api/games/chess-com';
-			const gamesParams = new URLSearchParams({ username, color, max: '500' });
-			const gamesResponse = await fetch(`${gamesApiPath}?${gamesParams}`);
-
-			if (!gamesResponse.ok) {
-				const body = await gamesResponse.json().catch(() => ({})) as { message?: string };
-				throw new Error(body.message ?? `Error ${gamesResponse.status}`);
-			}
-
-			const { games } = await gamesResponse.json() as { games: Game[] };
-			gamesByColor = { ...gamesByColor, [color]: games };
-		} catch (err) {
-			errorMessage = err instanceof Error ? err.message : 'Something went wrong';
-		} finally {
-			loading = false;
-		}
-	}
-
 	async function search(): Promise<void> {
 		if (!username.trim()) return;
 		profile = null;
@@ -109,19 +88,27 @@
 
 		loading = true;
 		try {
-			const gamesParams = new URLSearchParams({ username, color: playerColor, max: '500' });
-			const [gamesResponse, profileResponse] = await Promise.all([
-				fetch(`${gamesApiPath}?${gamesParams}`),
+			const makeGamesParams = (color: 'white' | 'black') =>
+				new URLSearchParams({ username, color, max: String(maxGames) });
+
+			const [whiteResponse, blackResponse, profileResponse] = await Promise.all([
+				fetch(`${gamesApiPath}?${makeGamesParams('white')}`),
+				fetch(`${gamesApiPath}?${makeGamesParams('black')}`),
 				fetch(`${profileApiPath}?username=${encodedUsername}`),
 			]);
 
-			if (!gamesResponse.ok) {
-				const body = await gamesResponse.json().catch(() => ({})) as { message?: string };
-				throw new Error(body.message ?? `Error ${gamesResponse.status}`);
+			// Use the response for the initially selected color to detect errors.
+			const primaryResponse = playerColor === 'white' ? whiteResponse : blackResponse;
+			if (!primaryResponse.ok) {
+				const body = await primaryResponse.json().catch(() => ({})) as { message?: string };
+				throw new Error(body.message ?? `Error ${primaryResponse.status}`);
 			}
 
-			const { games } = await gamesResponse.json() as { games: Game[] };
-			gamesByColor = { [playerColor]: games };
+			const [{ games: whiteGames }, { games: blackGames }] = await Promise.all([
+				whiteResponse.json() as Promise<{ games: Game[] }>,
+				blackResponse.json() as Promise<{ games: Game[] }>,
+			]);
+			gamesByColor = { white: whiteGames, black: blackGames };
 
 			if (profileResponse.ok) {
 				profile = await profileResponse.json() as Profile;
@@ -144,13 +131,11 @@
 		selectedMode = selectedMode === mode ? null : mode;
 	}
 
-	async function selectColor(color: 'white' | 'black'): Promise<void> {
+	function selectColor(color: 'white' | 'black'): void {
 		if (playerColor === color) return;
 		playerColor = color;
 		moveHistory = [];
-		if (!gamesByColor[color]) {
-			await fetchGamesForColor(color);
-		}
+		selectedMode = null;
 	}
 
 	function playMove(algebraicNotation: string): void {
@@ -210,6 +195,14 @@
 						bind:value={username}
 					/>
 
+					<select class="select select-bordered select-sm" bind:value={maxGames}>
+						<option value={100}>100 games</option>
+						<option value={200}>200 games</option>
+						<option value={500}>500 games</option>
+						<option value={1000}>1 000 games</option>
+						<option value={2000}>2 000 games</option>
+						<option value={0}>All games</option>
+					</select>
 					<button class="btn btn-sm btn-primary w-24" type="submit" disabled={loading || !username.trim()}>
 						{#if loading}
 							<span class="loading loading-spinner loading-xs"></span>
@@ -241,7 +234,6 @@
 							type="button"
 							class="join-item btn btn-xs {playerColor === 'white' ? 'btn-primary' : ''}"
 							onclick={() => selectColor('white')}
-							disabled={loading}
 						>
 							White
 						</button>
@@ -249,7 +241,6 @@
 							type="button"
 							class="join-item btn btn-xs {playerColor === 'black' ? 'btn-primary' : ''}"
 							onclick={() => selectColor('black')}
-							disabled={loading}
 						>
 							Black
 						</button>

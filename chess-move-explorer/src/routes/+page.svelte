@@ -5,7 +5,7 @@
 	import {
 		buildMoveFrequencyMap,
 		normalizeFenForLookup,
-		type MoveFrequencyMap,
+		type Game,
 		type PositionData,
 	} from '$lib/chess/move-tree';
 
@@ -20,6 +20,8 @@
 	let username = $state('');
 	let platform = $state<Platform>('lichess');
 	let playerColor = $state<'white' | 'black'>('white');
+	// 0 = all games
+	let maxGames = $state(500);
 	let loading = $state(false);
 	let errorMessage = $state('');
 
@@ -27,8 +29,17 @@
 	let profile = $state<Profile | null>(null);
 	let selectedMode = $state<string | null>(null);
 
-	// --- Explorer state ---
-	let frequencyMaps = $state<{ player: MoveFrequencyMap; opponent: MoveFrequencyMap } | null>(null);
+	// --- Games cache: keyed by color, populated on demand ---
+	let gamesByColor = $state<Partial<Record<'white' | 'black', Game[]>>>({});
+
+	// --- Derived frequency maps: recomputed instantly when mode or cached games change ---
+	let frequencyMaps = $derived.by(() => {
+		const games = gamesByColor[playerColor];
+		if (!games) return null;
+		const filtered = selectedMode ? games.filter((game) => game.mode === selectedMode) : games;
+		return buildMoveFrequencyMap(filtered, playerColor);
+	});
+
 	// moveHistory is the single source of truth; board state is fully derived from it.
 	let moveHistory = $state<string[]>([]);
 
@@ -63,62 +74,68 @@
 			: null
 	);
 
-	async function fetchGames(): Promise<void> {
+	async function search(): Promise<void> {
 		if (!username.trim()) return;
-		loading = true;
-		errorMessage = '';
 		profile = null;
-		frequencyMaps = null;
+		gamesByColor = {};
+		selectedMode = null;
 		moveHistory = [];
+		errorMessage = '';
 
+		const gamesApiPath = platform === 'lichess' ? '/api/games/lichess' : '/api/games/chess-com';
+		const profileApiPath = platform === 'lichess' ? '/api/profile/lichess' : '/api/profile/chess-com';
+		const encodedUsername = encodeURIComponent(username);
+
+		loading = true;
 		try {
-			const gamesApiPath = platform === 'lichess' ? '/api/games/lichess' : '/api/games/chess-com';
-			const profileApiPath = platform === 'lichess' ? '/api/profile/lichess' : '/api/profile/chess-com';
-			const encodedUsername = encodeURIComponent(username);
+			const makeGamesParams = (color: 'white' | 'black') =>
+				new URLSearchParams({ username, color, max: String(maxGames) });
 
-			const gamesParams = new URLSearchParams({ username, color: playerColor, max: '500' });
-			if (selectedMode) gamesParams.set('mode', selectedMode);
-
-			const [gamesResponse, profileResponse] = await Promise.all([
-				fetch(`${gamesApiPath}?${gamesParams}`),
-				profile ? Promise.resolve(null) : fetch(`${profileApiPath}?username=${encodedUsername}`),
+			const [whiteResponse, blackResponse, profileResponse] = await Promise.all([
+				fetch(`${gamesApiPath}?${makeGamesParams('white')}`),
+				fetch(`${gamesApiPath}?${makeGamesParams('black')}`),
+				fetch(`${profileApiPath}?username=${encodedUsername}`),
 			]);
 
-			if (!gamesResponse.ok) {
-				const body = await gamesResponse.json().catch(() => ({})) as { message?: string };
-				throw new Error(body.message ?? `Error ${gamesResponse.status}`);
+			// Use the response for the initially selected color to detect errors.
+			const primaryResponse = playerColor === 'white' ? whiteResponse : blackResponse;
+			if (!primaryResponse.ok) {
+				const body = await primaryResponse.json().catch(() => ({})) as { message?: string };
+				throw new Error(body.message ?? `Error ${primaryResponse.status}`);
 			}
 
-			const { games } = await gamesResponse.json() as { games: { moves: string; playerResult: 'win' | 'draw' | 'loss' }[] };
-			frequencyMaps = buildMoveFrequencyMap(games, playerColor);
+			const [{ games: whiteGames }, { games: blackGames }] = await Promise.all([
+				whiteResponse.json() as Promise<{ games: Game[] }>,
+				blackResponse.json() as Promise<{ games: Game[] }>,
+			]);
+			gamesByColor = { white: whiteGames, black: blackGames };
 
-			if (profileResponse?.ok) {
+			if (profileResponse.ok) {
 				profile = await profileResponse.json() as Profile;
 			}
-		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Something went wrong';
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Something went wrong';
 		} finally {
 			loading = false;
 		}
 	}
 
 	function resetExplorer(): void {
-		frequencyMaps = null;
+		gamesByColor = {};
 		moveHistory = [];
 		profile = null;
 		selectedMode = null;
 	}
 
-	async function selectMode(mode: string): Promise<void> {
+	function selectMode(mode: string): void {
 		selectedMode = selectedMode === mode ? null : mode;
-		await fetchGames();
 	}
 
-	async function selectColor(color: 'white' | 'black'): Promise<void> {
+	function selectColor(color: 'white' | 'black'): void {
 		if (playerColor === color) return;
 		playerColor = color;
+		moveHistory = [];
 		selectedMode = null;
-		await fetchGames();
 	}
 
 	function playMove(algebraicNotation: string): void {
@@ -151,7 +168,7 @@
 
 				<form
 					class="flex flex-wrap gap-3 mt-2 justify-center"
-					onsubmit={(e) => { e.preventDefault(); fetchGames(); }}
+					onsubmit={(e) => { e.preventDefault(); search(); }}
 				>
 					<!-- Platform toggle -->
 					<div class="join">
@@ -178,14 +195,25 @@
 						bind:value={username}
 					/>
 
-					<button class="btn btn-sm btn-primary w-24" type="submit" disabled={loading || !username.trim()}>
-						{#if loading}
-							<span class="loading loading-spinner loading-xs"></span>
-							Loading…
-						{:else}
-							Analyze
-						{/if}
-					</button>
+					<!-- Limit + submit joined -->
+					<div class="join">
+						<select class="join-item select select-bordered select-sm w-36" bind:value={maxGames}>
+							<option value={100}>100 games</option>
+							<option value={200}>200 games</option>
+							<option value={500}>500 games</option>
+							<option value={1000}>1 000 games</option>
+							<option value={2000}>2 000 games</option>
+							<option value={0}>All games</option>
+						</select>
+						<button class="join-item btn btn-sm btn-primary w-28" type="submit" disabled={loading || !username.trim()}>
+							{#if loading}
+								<span class="loading loading-spinner loading-xs"></span>
+								Loading…
+							{:else}
+								Analyze
+							{/if}
+						</button>
+					</div>
 				</form>
 
 				</div>
@@ -209,7 +237,6 @@
 							type="button"
 							class="join-item btn btn-xs {playerColor === 'white' ? 'btn-primary' : ''}"
 							onclick={() => selectColor('white')}
-							disabled={loading}
 						>
 							White
 						</button>
@@ -217,7 +244,6 @@
 							type="button"
 							class="join-item btn btn-xs {playerColor === 'black' ? 'btn-primary' : ''}"
 							onclick={() => selectColor('black')}
-							disabled={loading}
 						>
 							Black
 						</button>
@@ -250,7 +276,7 @@
 		{/if}
 
 		<!-- Explorer -->
-		{#if frequencyMaps}
+		{#if gamesByColor[playerColor]}
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
 				<!-- Board + navigation -->

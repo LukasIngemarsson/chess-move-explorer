@@ -24,6 +24,7 @@ export type MoveFrequencyMap = Map<string, PositionData>;
 export interface Game {
 	moves: string;
 	playerResult: 'win' | 'draw' | 'loss';
+	mode: string;
 }
 
 interface MoveStats {

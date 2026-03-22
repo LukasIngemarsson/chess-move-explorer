@@ -69,12 +69,10 @@ function computePlayerResult(
 function normalizeGame(
 	game: ChessComGame,
 	username: string,
-	playerColor: 'white' | 'black',
-	mode: string | null
+	playerColor: 'white' | 'black'
 ): Game | null {
 	// Skip correspondence games — daily time control has very different preparation patterns.
 	if (game.time_class === 'daily') return null;
-	if (mode && game.time_class !== mode) return null;
 
 	const headers = extractPgnHeaders(game.pgn);
 
@@ -87,14 +85,15 @@ function normalizeGame(
 	const moves = extractMovesFromPgn(game.pgn);
 	if (!moves) return null;
 
-	return { moves, playerResult };
+	return { moves, playerResult, mode: game.time_class };
 }
 
 export const GET: RequestHandler = async ({ url }) => {
 	const username = url.searchParams.get('username');
-	const max = Math.min(parseInt(url.searchParams.get('max') ?? '500'), 500);
+	const rawMax = parseInt(url.searchParams.get('max') ?? '500');
+	// max=0 means "all games"; otherwise cap at 10 000 to avoid runaway requests.
+	const max = rawMax === 0 ? Infinity : Math.min(rawMax, 10_000);
 	const rawColor = url.searchParams.get('color');
-	const mode = url.searchParams.get('mode');
 
 	if (!username) error(400, 'username is required');
 	if (rawColor !== 'white' && rawColor !== 'black') error(400, 'color must be white or black');
@@ -114,8 +113,11 @@ export const GET: RequestHandler = async ({ url }) => {
 	const { archives } = await archivesResponse.json() as ChessComArchivesResponse;
 	if (archives.length === 0) return json({ games: [] });
 
-	// Fetch the most recent archives in parallel (up to 6 months).
-	const recentArchiveUrls = [...archives].reverse().slice(0, 6);
+	// Fetch enough archives to cover the requested number of games.
+	// Chess.com archives average ~50-100 games/month, so over-fetch slightly.
+	// When max is Infinity (all games), fetch every archive.
+	const archiveCount = isFinite(max) ? Math.min(Math.ceil(max / 50) + 2, archives.length) : archives.length;
+	const recentArchiveUrls = [...archives].reverse().slice(0, archiveCount);
 	const archiveResponses = await Promise.all(
 		recentArchiveUrls.map((archiveUrl) =>
 			fetch(archiveUrl, { headers: REQUEST_HEADERS })
@@ -129,13 +131,12 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	// Collect normalized games, most-recent-first, up to the max limit.
 	const normalizedGames: Game[] = [];
-	for (const { games } of archiveResponses) {
+	outer: for (const { games } of archiveResponses) {
 		for (const game of [...games].reverse()) {
-			if (normalizedGames.length >= max) break;
-			const normalized = normalizeGame(game, username, playerColor, mode);
+			if (normalizedGames.length >= max) break outer;
+			const normalized = normalizeGame(game, username, playerColor);
 			if (normalized) normalizedGames.push(normalized);
 		}
-		if (normalizedGames.length >= max) break;
 	}
 
 	return json({ games: normalizedGames });

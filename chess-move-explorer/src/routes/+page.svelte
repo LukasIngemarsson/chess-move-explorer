@@ -58,7 +58,6 @@
 		allModeMapsByColor = result;
 	}
 
-	$effect(() => { rebuildMaps(processedGamesByColor); });
 
 	// --- Active frequency maps: instant lookup, no computation ---
 	let frequencyMaps = $derived(
@@ -149,14 +148,17 @@
 					whiteProcessed = partial.length;
 					loadingProgress = Math.round((whiteProcessed + blackProcessed) / total * 100);
 					processedGamesByColor = { ...processedGamesByColor, white: partial };
+					rebuildMaps(processedGamesByColor);
 				}),
 				processGames(blackGames, (partial) => {
 					blackProcessed = partial.length;
 					loadingProgress = Math.round((whiteProcessed + blackProcessed) / total * 100);
 					processedGamesByColor = { ...processedGamesByColor, black: partial };
+					rebuildMaps(processedGamesByColor);
 				}),
 			]);
 			processedGamesByColor = { white, black };
+			rebuildMaps(processedGamesByColor);
 
 			if (profileResponse.ok) {
 				profile = await profileResponse.json() as Profile;
@@ -171,6 +173,7 @@
 	}
 
 	function resetExplorer(): void {
+		_buildSignal.cancelled = true;
 		processedGamesByColor = {};
 		allModeMapsByColor = {};
 		moveHistory = [];

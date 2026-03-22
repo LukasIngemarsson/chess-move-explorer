@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { Chess } from 'chess.js';
 	import Board from '$lib/components/Board.svelte';
 	import MoveList from '$lib/components/MoveList.svelte';
@@ -67,6 +68,7 @@
 
 	// moveHistory is the single source of truth; board state is fully derived from it.
 	let moveHistory = $state<string[]>([]);
+	let moveLogEl = $state<HTMLElement | null>(null);
 
 	// --- Derived board state ---
 	let boardState = $derived.by(() => {
@@ -206,8 +208,10 @@
 		selectedMode = null;
 	}
 
-	function playMove(algebraicNotation: string): void {
+	async function playMove(algebraicNotation: string): Promise<void> {
 		moveHistory = [...moveHistory, algebraicNotation];
+		await tick();
+		if (moveLogEl) moveLogEl.scrollTop = moveLogEl.scrollHeight;
 	}
 
 	function stepBack(): void {
@@ -401,7 +405,7 @@
 							/>
 						</div>
 						{#if moveHistory.length > 0}
-							<div class="flex flex-wrap items-baseline gap-x-1 gap-y-1 font-mono text-sm text-base-content/70 py-2 border-t border-base-200">
+							<div bind:this={moveLogEl} class="flex flex-wrap items-baseline gap-x-1 gap-y-1 font-mono text-sm text-base-content/70 py-2 border-t border-base-200 max-h-20 overflow-y-auto">
 								{#each moveHistory as move, i}
 									{#if i % 2 === 0}
 										<span class="text-base-content/40 select-none">{Math.floor(i / 2) + 1}.</span>

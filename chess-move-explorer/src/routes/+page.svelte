@@ -112,14 +112,14 @@
 					<div class="join">
 						<button
 							type="button"
-							class="join-item btn btn-sm {platform === 'lichess' ? 'btn-primary' : 'btn-outline'}"
+							class="join-item btn btn-sm {platform === 'lichess' ? 'btn-primary' : ''}"
 							onclick={() => { platform = 'lichess'; frequencyMaps = null; moveHistory = []; }}
 						>
 							Lichess
 						</button>
 						<button
 							type="button"
-							class="join-item btn btn-sm {platform === 'chess-com' ? 'btn-primary' : 'btn-outline'}"
+							class="join-item btn btn-sm {platform === 'chess-com' ? 'btn-primary' : ''}"
 							onclick={() => { platform = 'chess-com'; frequencyMaps = null; moveHistory = []; }}
 						>
 							Chess.com
@@ -137,14 +137,14 @@
 					<div class="join">
 						<button
 							type="button"
-							class="join-item btn btn-sm {playerColor === 'white' ? 'btn-primary' : 'btn-outline'}"
+							class="join-item btn btn-sm {playerColor === 'white' ? 'btn-primary' : ''}"
 							onclick={() => { playerColor = 'white'; frequencyMaps = null; moveHistory = []; }}
 						>
 							White
 						</button>
 						<button
 							type="button"
-							class="join-item btn btn-sm {playerColor === 'black' ? 'btn-primary' : 'btn-outline'}"
+							class="join-item btn btn-sm {playerColor === 'black' ? 'btn-primary' : ''}"
 							onclick={() => { playerColor = 'black'; frequencyMaps = null; moveHistory = []; }}
 						>
 							Black

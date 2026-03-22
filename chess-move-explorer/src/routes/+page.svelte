@@ -82,6 +82,18 @@
 
 	let isPlayerTurn = $derived(playerColor === boardState.sideToMove);
 
+	let hoveredMove = $state<string | null>(null);
+	let hoveredSquares = $derived.by((): [string, string] | undefined => {
+		if (!hoveredMove) return undefined;
+		try {
+			const chess = new Chess(boardState.fen);
+			const result = chess.move(hoveredMove);
+			return [result.from, result.to];
+		} catch {
+			return undefined;
+		}
+	});
+
 	let positionData = $derived.by<PositionData>(() => {
 		if (!frequencyMaps) return { moves: [], totalGames: 0 };
 		const normalizedFen = normalizeFenForLookup(boardState.fen);
@@ -350,7 +362,7 @@
 				<!-- Board + navigation -->
 				<div class="card bg-base-100 shadow" bind:clientHeight={boardCardHeight}>
 					<div class="card-body">
-						<Board fen={boardState.fen} {orientation} lastMove={boardState.lastMovedSquares} />
+						<Board fen={boardState.fen} {orientation} lastMove={boardState.lastMovedSquares} hoverSquares={hoveredSquares} />
 					</div>
 				</div>
 
@@ -383,6 +395,7 @@
 								moves={positionData.moves}
 								totalGames={positionData.totalGames}
 								onSelect={playMove}
+								onHover={(m) => { hoveredMove = m; }}
 								updating={loading}
 								progress={loadingProgress}
 							/>

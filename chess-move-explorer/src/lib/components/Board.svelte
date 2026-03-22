@@ -6,18 +6,28 @@
 		fen: string;
 		orientation: 'white' | 'black';
 		lastMove?: [string, string];
+		hoverSquares?: [string, string];
 	}
 
 	interface Props {
 		fen: string;
 		orientation?: 'white' | 'black';
 		lastMove?: [string, string];
+		hoverSquares?: [string, string];
 	}
 
-	let { fen, orientation = 'white', lastMove }: Props = $props();
+	let { fen, orientation = 'white', lastMove, hoverSquares }: Props = $props();
 
 	function toChessgroundKeys(squares: [string, string] | undefined): [Key, Key] | undefined {
 		return squares ? [squares[0] as Key, squares[1] as Key] : undefined;
+	}
+
+	function toAutoShapes(squares: [string, string] | undefined) {
+		if (!squares) return [];
+		return [
+			{ orig: squares[0] as Key, brush: 'paleBlue' },
+			{ orig: squares[1] as Key, brush: 'paleBlue' },
+		];
 	}
 
 	function chessboard(element: HTMLElement, initialBoardProps: BoardProps) {
@@ -33,6 +43,7 @@
 				movable: { free: false, color: undefined },
 				draggable: { enabled: false },
 				selectable: { enabled: false },
+				drawable: { autoShapes: toAutoShapes(latestBoardProps.hoverSquares) },
 			});
 		});
 
@@ -43,6 +54,7 @@
 					fen: newBoardProps.fen,
 					orientation: newBoardProps.orientation,
 					lastMove: toChessgroundKeys(newBoardProps.lastMove),
+					drawable: { autoShapes: toAutoShapes(newBoardProps.hoverSquares) },
 				});
 			},
 			destroy() {
@@ -52,4 +64,4 @@
 	}
 </script>
 
-<div use:chessboard={{ fen, orientation, lastMove }} class="cg-wrap w-full aspect-square"></div>
+<div use:chessboard={{ fen, orientation, lastMove, hoverSquares }} class="cg-wrap w-full aspect-square"></div>

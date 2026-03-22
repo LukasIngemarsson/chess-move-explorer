@@ -5,11 +5,12 @@
 		moves: MoveFrequency[];
 		totalGames: number;
 		onSelect: (algebraicNotation: string) => void;
+		onHover?: (algebraicNotation: string | null) => void;
 		updating?: boolean;
 		progress?: number;
 	}
 
-	let { moves, totalGames, onSelect, updating = false, progress = 0 }: Props = $props();
+	let { moves, totalGames, onSelect, onHover, updating = false, progress = 0 }: Props = $props();
 </script>
 
 <div class="flex flex-col gap-1">
@@ -26,6 +27,8 @@
 			class="grid w-full items-center gap-x-3 font-mono text-sm py-2 px-3 rounded-lg hover:bg-base-200 active:bg-base-300 cursor-pointer"
 			style="grid-template-columns: 3rem 3rem 1fr 3rem 3rem 3rem"
 			onclick={() => onSelect(move.algebraicNotation)}
+			onmouseenter={() => onHover?.(move.algebraicNotation)}
+			onmouseleave={() => onHover?.(null)}
 		>
 			<span class="text-base font-semibold text-left">{move.algebraicNotation}</span>
 

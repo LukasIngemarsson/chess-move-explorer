@@ -5,7 +5,7 @@
 	import {
 		buildMoveFrequencyMap,
 		normalizeFenForLookup,
-		type MoveFrequencyMap,
+		type Game,
 		type PositionData,
 	} from '$lib/chess/move-tree';
 
@@ -27,8 +27,17 @@
 	let profile = $state<Profile | null>(null);
 	let selectedMode = $state<string | null>(null);
 
-	// --- Explorer state ---
-	let frequencyMaps = $state<{ player: MoveFrequencyMap; opponent: MoveFrequencyMap } | null>(null);
+	// --- Games cache: keyed by color, populated on demand ---
+	let gamesByColor = $state<Partial<Record<'white' | 'black', Game[]>>>({});
+
+	// --- Derived frequency maps: recomputed instantly when mode or cached games change ---
+	let frequencyMaps = $derived.by(() => {
+		const games = gamesByColor[playerColor];
+		if (!games) return null;
+		const filtered = selectedMode ? games.filter((game) => game.mode === selectedMode) : games;
+		return buildMoveFrequencyMap(filtered, playerColor);
+	});
+
 	// moveHistory is the single source of truth; board state is fully derived from it.
 	let moveHistory = $state<string[]>([]);
 
@@ -63,25 +72,47 @@
 			: null
 	);
 
-	async function fetchGames(): Promise<void> {
-		if (!username.trim()) return;
+	async function fetchGamesForColor(color: 'white' | 'black'): Promise<void> {
 		loading = true;
 		errorMessage = '';
-		profile = null;
-		frequencyMaps = null;
-		moveHistory = [];
 
 		try {
 			const gamesApiPath = platform === 'lichess' ? '/api/games/lichess' : '/api/games/chess-com';
-			const profileApiPath = platform === 'lichess' ? '/api/profile/lichess' : '/api/profile/chess-com';
-			const encodedUsername = encodeURIComponent(username);
+			const gamesParams = new URLSearchParams({ username, color, max: '500' });
+			const gamesResponse = await fetch(`${gamesApiPath}?${gamesParams}`);
 
+			if (!gamesResponse.ok) {
+				const body = await gamesResponse.json().catch(() => ({})) as { message?: string };
+				throw new Error(body.message ?? `Error ${gamesResponse.status}`);
+			}
+
+			const { games } = await gamesResponse.json() as { games: Game[] };
+			gamesByColor = { ...gamesByColor, [color]: games };
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Something went wrong';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function search(): Promise<void> {
+		if (!username.trim()) return;
+		profile = null;
+		gamesByColor = {};
+		selectedMode = null;
+		moveHistory = [];
+		errorMessage = '';
+
+		const gamesApiPath = platform === 'lichess' ? '/api/games/lichess' : '/api/games/chess-com';
+		const profileApiPath = platform === 'lichess' ? '/api/profile/lichess' : '/api/profile/chess-com';
+		const encodedUsername = encodeURIComponent(username);
+
+		loading = true;
+		try {
 			const gamesParams = new URLSearchParams({ username, color: playerColor, max: '500' });
-			if (selectedMode) gamesParams.set('mode', selectedMode);
-
 			const [gamesResponse, profileResponse] = await Promise.all([
 				fetch(`${gamesApiPath}?${gamesParams}`),
-				profile ? Promise.resolve(null) : fetch(`${profileApiPath}?username=${encodedUsername}`),
+				fetch(`${profileApiPath}?username=${encodedUsername}`),
 			]);
 
 			if (!gamesResponse.ok) {
@@ -89,36 +120,37 @@
 				throw new Error(body.message ?? `Error ${gamesResponse.status}`);
 			}
 
-			const { games } = await gamesResponse.json() as { games: { moves: string; playerResult: 'win' | 'draw' | 'loss' }[] };
-			frequencyMaps = buildMoveFrequencyMap(games, playerColor);
+			const { games } = await gamesResponse.json() as { games: Game[] };
+			gamesByColor = { [playerColor]: games };
 
-			if (profileResponse?.ok) {
+			if (profileResponse.ok) {
 				profile = await profileResponse.json() as Profile;
 			}
-		} catch (error) {
-			errorMessage = error instanceof Error ? error.message : 'Something went wrong';
+		} catch (err) {
+			errorMessage = err instanceof Error ? err.message : 'Something went wrong';
 		} finally {
 			loading = false;
 		}
 	}
 
 	function resetExplorer(): void {
-		frequencyMaps = null;
+		gamesByColor = {};
 		moveHistory = [];
 		profile = null;
 		selectedMode = null;
 	}
 
-	async function selectMode(mode: string): Promise<void> {
+	function selectMode(mode: string): void {
 		selectedMode = selectedMode === mode ? null : mode;
-		await fetchGames();
 	}
 
 	async function selectColor(color: 'white' | 'black'): Promise<void> {
 		if (playerColor === color) return;
 		playerColor = color;
-		selectedMode = null;
-		await fetchGames();
+		moveHistory = [];
+		if (!gamesByColor[color]) {
+			await fetchGamesForColor(color);
+		}
 	}
 
 	function playMove(algebraicNotation: string): void {
@@ -151,7 +183,7 @@
 
 				<form
 					class="flex flex-wrap gap-3 mt-2 justify-center"
-					onsubmit={(e) => { e.preventDefault(); fetchGames(); }}
+					onsubmit={(e) => { e.preventDefault(); search(); }}
 				>
 					<!-- Platform toggle -->
 					<div class="join">
@@ -250,7 +282,7 @@
 		{/if}
 
 		<!-- Explorer -->
-		{#if frequencyMaps}
+		{#if gamesByColor[playerColor]}
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
 				<!-- Board + navigation -->

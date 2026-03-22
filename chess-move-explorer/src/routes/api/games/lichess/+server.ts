@@ -4,6 +4,7 @@ import type { Game } from '$lib/chess/move-tree';
 
 interface LichessGame {
 	variant: string;
+	perf: string;
 	moves: string;
 	winner?: 'white' | 'black';
 }
@@ -20,7 +21,6 @@ export const GET: RequestHandler = async ({ url }) => {
 	const username = url.searchParams.get('username');
 	const max = Math.min(parseInt(url.searchParams.get('max') ?? '500'), 500);
 	const rawColor = url.searchParams.get('color');
-	const mode = url.searchParams.get('mode');
 
 	if (!username) error(400, 'username is required');
 	if (rawColor !== 'white' && rawColor !== 'black') error(400, 'color must be white or black');
@@ -35,7 +35,6 @@ export const GET: RequestHandler = async ({ url }) => {
 		opening: 'false',
 		color: playerColor,
 	});
-	if (mode) params.set('perfType', mode);
 
 	const response = await fetch(
 		`https://lichess.org/api/games/user/${encodeURIComponent(username)}?${params}`,
@@ -56,6 +55,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		.map((game) => ({
 			moves: game.moves,
 			playerResult: computePlayerResult(game.winner, playerColor),
+			mode: game.perf,
 		}));
 
 	return json({ games });

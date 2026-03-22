@@ -114,6 +114,13 @@
 		await fetchGames();
 	}
 
+	async function selectColor(color: 'white' | 'black'): Promise<void> {
+		if (playerColor === color) return;
+		playerColor = color;
+		selectedMode = null;
+		await fetchGames();
+	}
+
 	function playMove(algebraicNotation: string): void {
 		moveHistory = [...moveHistory, algebraicNotation];
 	}
@@ -171,24 +178,6 @@
 						bind:value={username}
 					/>
 
-					<!-- Color toggle -->
-					<div class="join">
-						<button
-							type="button"
-							class="join-item btn btn-sm {playerColor === 'white' ? 'btn-primary' : ''}"
-							onclick={() => { playerColor = 'white'; resetExplorer(); }}
-						>
-							White
-						</button>
-						<button
-							type="button"
-							class="join-item btn btn-sm {playerColor === 'black' ? 'btn-primary' : ''}"
-							onclick={() => { playerColor = 'black'; resetExplorer(); }}
-						>
-							Black
-						</button>
-					</div>
-
 					<button class="btn btn-sm btn-primary w-24" type="submit" disabled={loading || !username.trim()}>
 						{#if loading}
 							<span class="loading loading-spinner loading-xs"></span>
@@ -215,6 +204,24 @@
 					<a href={profileUrl} target="_blank" rel="noopener noreferrer" class="font-semibold link link-hover">
 						{profile.username}
 					</a>
+					<div class="join">
+						<button
+							type="button"
+							class="join-item btn btn-xs {playerColor === 'white' ? 'btn-primary' : ''}"
+							onclick={() => selectColor('white')}
+							disabled={loading}
+						>
+							White
+						</button>
+						<button
+							type="button"
+							class="join-item btn btn-xs {playerColor === 'black' ? 'btn-primary' : ''}"
+							onclick={() => selectColor('black')}
+							disabled={loading}
+						>
+							Black
+						</button>
+					</div>
 					<div class="flex flex-wrap gap-2">
 						{#each profile.ratings as { mode, rating }}
 							{#if rating !== null}

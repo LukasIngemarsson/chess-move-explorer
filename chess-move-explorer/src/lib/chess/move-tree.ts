@@ -59,7 +59,10 @@ interface MoveStats {
  * Yields to the main thread every CHUNK_SIZE games so the browser can
  * keep painting (e.g. a loading spinner) during the heavy computation.
  */
-export async function processGames(games: Game[]): Promise<ProcessedGame[]> {
+export async function processGames(
+	games: Game[],
+	onProgress?: (partial: ProcessedGame[]) => void
+): Promise<ProcessedGame[]> {
 	// Yield to the browser at frame boundaries (every ~10 ms of work) so
 	// the UI (e.g. a loading spinner) keeps painting smoothly.
 	const FRAME_BUDGET_MS = 10;
@@ -67,6 +70,7 @@ export async function processGames(games: Game[]): Promise<ProcessedGame[]> {
 	let frameStart = performance.now();
 	for (let i = 0; i < games.length; i++) {
 		if (performance.now() - frameStart > FRAME_BUDGET_MS) {
+			onProgress?.(result);
 			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 			frameStart = performance.now();
 		}

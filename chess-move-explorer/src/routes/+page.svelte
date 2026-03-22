@@ -128,8 +128,12 @@
 
 			loadingStatus = 'Building move tree…';
 			const [white, black] = await Promise.all([
-				processGames(whiteGames),
-				processGames(blackGames),
+				processGames(whiteGames, (partial) => {
+					processedGamesByColor = { ...processedGamesByColor, white: partial };
+				}),
+				processGames(blackGames, (partial) => {
+					processedGamesByColor = { ...processedGamesByColor, black: partial };
+				}),
 			]);
 			processedGamesByColor = { white, black };
 

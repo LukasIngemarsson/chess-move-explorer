@@ -9,7 +9,7 @@ interface LichessUser {
 
 export interface LichessProfile {
 	username: string;
-	ratings: { mode: string; rating: number }[];
+	ratings: { mode: string; rating: number | null }[];
 }
 
 const DISPLAYED_MODES = ['bullet', 'blitz', 'rapid', 'classical'] as const;
@@ -28,8 +28,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const user = await response.json() as LichessUser;
 
 	const ratings = DISPLAYED_MODES
-		.map((mode) => ({ mode, rating: user.perfs[mode]?.rating }))
-		.filter((entry): entry is { mode: string; rating: number } => entry.rating !== undefined);
+		.map((mode) => ({ mode, rating: user.perfs[mode]?.rating ?? null }));
 
 	const profile: LichessProfile = { username: user.username, ratings };
 	return json(profile);

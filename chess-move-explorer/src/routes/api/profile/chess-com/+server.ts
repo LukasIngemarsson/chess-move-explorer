@@ -9,7 +9,7 @@ interface ChessComStats {
 
 export interface ChessComProfile {
 	username: string;
-	ratings: { mode: string; rating: number }[];
+	ratings: { mode: string; rating: number | null }[];
 }
 
 const REQUEST_HEADERS = {
@@ -32,13 +32,11 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	const stats = await response.json() as ChessComStats;
 
-	const ratings: { mode: string; rating: number }[] = [
-		{ mode: 'bullet', value: stats.chess_bullet?.last.rating },
-		{ mode: 'blitz', value: stats.chess_blitz?.last.rating },
-		{ mode: 'rapid', value: stats.chess_rapid?.last.rating },
-	]
-		.filter((entry): entry is { mode: string; value: number } => entry.value !== undefined)
-		.map(({ mode, value }) => ({ mode, rating: value }));
+	const ratings: { mode: string; rating: number | null }[] = [
+		{ mode: 'bullet', rating: stats.chess_bullet?.last.rating ?? null },
+		{ mode: 'blitz', rating: stats.chess_blitz?.last.rating ?? null },
+		{ mode: 'rapid', rating: stats.chess_rapid?.last.rating ?? null },
+	];
 
 	const profile: ChessComProfile = { username, ratings };
 	return json(profile);

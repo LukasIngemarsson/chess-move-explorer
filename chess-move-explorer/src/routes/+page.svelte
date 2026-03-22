@@ -13,7 +13,7 @@
 
 	interface Profile {
 		username: string;
-		ratings: { mode: string; rating: number }[];
+		ratings: { mode: string; rating: number | null }[];
 	}
 
 	// --- Form state ---
@@ -67,6 +67,7 @@
 		if (!username.trim()) return;
 		loading = true;
 		errorMessage = '';
+		profile = null;
 		frequencyMaps = null;
 		moveHistory = [];
 
@@ -198,13 +199,14 @@
 					</button>
 				</form>
 
-				{#if errorMessage}
-					<div class="alert alert-error mt-2">
-						<span>{errorMessage}</span>
-					</div>
-				{/if}
-			</div>
+				</div>
 		</div>
+
+		{#if errorMessage}
+			<div class="alert alert-error shadow">
+				<span>{errorMessage}</span>
+			</div>
+		{/if}
 
 		<!-- Profile card -->
 		{#if profile}
@@ -215,15 +217,22 @@
 					</a>
 					<div class="flex flex-wrap gap-2">
 						{#each profile.ratings as { mode, rating }}
-							<button
-								type="button"
-								class="badge gap-1 cursor-pointer {selectedMode === mode ? 'badge-primary' : 'badge-ghost'}"
-								onclick={() => selectMode(mode)}
-								title="{selectedMode === mode ? 'Click to show all modes' : `Click to filter by ${mode}`}"
-							>
-								<span class="capitalize">{mode}</span>
-								<span class="font-mono font-semibold">{rating}</span>
-							</button>
+							{#if rating !== null}
+								<button
+									type="button"
+									class="badge gap-1 cursor-pointer {selectedMode === mode ? 'badge-primary' : 'badge-ghost'}"
+									onclick={() => selectMode(mode)}
+									title="{selectedMode === mode ? 'Click to show all modes' : `Click to filter by ${mode}`}"
+								>
+									<span class="capitalize">{mode}</span>
+									<span class="font-mono font-semibold">{rating}</span>
+								</button>
+							{:else}
+								<span class="badge badge-ghost gap-1 opacity-40" title="No {mode} games played">
+									<span class="capitalize">{mode}</span>
+									<span class="font-mono">—</span>
+								</span>
+							{/if}
 						{/each}
 					</div>
 					{#if selectedMode}

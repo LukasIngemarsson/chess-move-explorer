@@ -44,9 +44,9 @@
 				</span>
 			</span>
 
-			<span class="text-xs text-green-600 text-right tabular-nums">W{move.winPercentage}%</span>
-			<span class="text-xs text-gray-400 text-right tabular-nums">D{move.drawPercentage}%</span>
-			<span class="text-xs text-red-700 text-right tabular-nums">L{move.lossPercentage}%</span>
+			<span class="text-xs text-green-600 tabular-nums">W{move.winPercentage}%</span>
+			<span class="text-xs text-gray-400 tabular-nums">D{move.drawPercentage}%</span>
+			<span class="text-xs text-red-700 tabular-nums">L{move.lossPercentage}%</span>
 		</button>
 	{/each}
 

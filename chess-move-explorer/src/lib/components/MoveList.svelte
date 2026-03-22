@@ -23,7 +23,10 @@
 			<span class="text-base font-semibold w-10 text-left">{move.algebraicNotation}</span>
 
 			<span class="flex flex-1 items-center gap-3 text-sm min-w-0">
-				<span class="text-primary/70 w-10 text-right shrink-0">{move.count}×</span>
+				<span class="flex flex-col items-end shrink-0 w-12">
+					<span class="text-primary/70">{move.count}×</span>
+					<span class="text-base-content/40 text-xs">{move.percentage}%</span>
+				</span>
 
 				<span class="flex flex-col gap-0.5 flex-1 min-w-0">
 					<!-- Move frequency bar -->
@@ -41,10 +44,10 @@
 					</span>
 				</span>
 
-				<span class="text-xs w-28 text-right shrink-0">
-					<span class="text-green-600">W{move.winPercentage}%</span>
-					<span class="text-gray-400"> D{move.drawPercentage}%</span>
-					<span class="text-red-700"> L{move.lossPercentage}%</span>
+				<span class="text-xs shrink-0 flex gap-1 tabular-nums">
+					<span class="text-green-600 w-10 text-right">W{move.winPercentage}%</span>
+					<span class="text-gray-400 w-10 text-right">D{move.drawPercentage}%</span>
+					<span class="text-red-700 w-10 text-right">L{move.lossPercentage}%</span>
 				</span>
 			</span>
 		</button>

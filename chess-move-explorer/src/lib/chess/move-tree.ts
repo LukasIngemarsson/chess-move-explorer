@@ -65,23 +65,20 @@ export async function processGames(
 ): Promise<ProcessedGame[]> {
 	// Yield to the browser at frame boundaries (every ~10 ms of work) so
 	// the UI (e.g. a loading spinner) keeps painting smoothly.
-	// onProgress is throttled to every 2s — calling it triggers an expensive $derived
-	// recomputation, so we keep it infrequent and fire it after the rAF yield so the
-	// browser can paint first.
+	// onProgress fires only once, after the first PREVIEW_THRESHOLD games, so the
+	// explorer shows early with common opening moves without repeated expensive rebuilds.
 	const FRAME_BUDGET_MS = 10;
-	const PROGRESS_INTERVAL_MS = 2000;
+	const PREVIEW_THRESHOLD = 50;
 	const result: ProcessedGame[] = [];
+	let previewFired = false;
 	let frameStart = performance.now();
-	let lastProgressAt = -Infinity;
 	for (let i = 0; i < games.length; i++) {
 		if (performance.now() - frameStart > FRAME_BUDGET_MS) {
 			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 			frameStart = performance.now();
-			const now = performance.now();
-			if (onProgress && now - lastProgressAt >= PROGRESS_INTERVAL_MS) {
-				lastProgressAt = now;
-				// Defer via setTimeout so the current frame paints cleanly before
-				// the expensive $derived recomputation runs.
+			if (onProgress && !previewFired && result.length >= PREVIEW_THRESHOLD) {
+				previewFired = true;
+				// Defer to a macrotask so the current frame paints cleanly first.
 				setTimeout(() => onProgress(result), 0);
 			}
 		}

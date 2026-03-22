@@ -134,6 +134,11 @@
 				throw new Error(body.message ?? `Error ${primaryResponse.status}`);
 			}
 
+			// Profile response is already buffered — parse now so the card appears before game processing.
+			if (profileResponse.ok) {
+				profile = await profileResponse.json() as Profile;
+			}
+
 			const [{ games: whiteGames }, { games: blackGames }] = await Promise.all([
 				whiteResponse.json() as Promise<{ games: Game[] }>,
 				blackResponse.json() as Promise<{ games: Game[] }>,
@@ -160,10 +165,6 @@
 			]);
 			processedGamesByColor = { white, black };
 			rebuildMaps(processedGamesByColor);
-
-			if (profileResponse.ok) {
-				profile = await profileResponse.json() as Profile;
-			}
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Something went wrong';
 		} finally {

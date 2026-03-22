@@ -30,6 +30,7 @@
 	let loadingStatus = $state('');
 	let loadingElapsed = $state(0);
 	let loadingProgress = $state(0);
+	let boardCardHeight = $state(0);
 	let errorMessage = $state('');
 
 	// --- Profile state ---
@@ -340,7 +341,7 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
 				<!-- Board + navigation -->
-				<div class="card bg-base-100 shadow">
+				<div class="card bg-base-100 shadow" bind:clientHeight={boardCardHeight}>
 					<div class="card-body gap-4">
 						<Board fen={boardState.fen} {orientation} lastMove={boardState.lastMovedSquares} />
 
@@ -353,7 +354,7 @@
 				</div>
 
 				<!-- Move list -->
-				<div class="card bg-base-100 shadow overflow-hidden flex flex-col">
+				<div class="card bg-base-100 shadow flex flex-col" style="max-height: {boardCardHeight}px">
 					<div class="card-body flex-1 flex flex-col overflow-hidden">
 						<div class="flex items-center justify-between mb-1">
 							<h2 class="card-title text-base">

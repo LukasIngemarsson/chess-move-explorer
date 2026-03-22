@@ -22,7 +22,7 @@
 
 	// --- Form state ---
 	let username = $state('');
-	let platform = $state<Platform>('lichess');
+	let platform = $state<Platform>('chess-com');
 	let playerColor = $state<'white' | 'black'>('white');
 	// 0 = all games
 	let maxGames = $state(500);

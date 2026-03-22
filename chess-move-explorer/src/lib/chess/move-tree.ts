@@ -104,22 +104,34 @@ export async function processGames(
 	return result;
 }
 
+/** Cancellation token for async builds. */
+export interface BuildSignal { cancelled: boolean }
+
 /**
  * Build frequency maps for every mode (and 'all') in a single pass over the
  * processed games. Returns a record keyed by mode string plus the key 'all'.
- * No chess.js calls — only Map operations.
+ * Async with rAF yields so it never blocks the main thread.
  */
-export function buildAllModeFrequencyMaps(
+export async function buildAllModeFrequencyMaps(
 	processedGames: ProcessedGame[],
-	playerColor: 'white' | 'black'
-): Record<string, FrequencyMaps> {
+	playerColor: 'white' | 'black',
+	signal?: BuildSignal
+): Promise<Record<string, FrequencyMaps> | null> {
 	type CountsMap = Map<string, Map<string, MoveStats>>;
 
+	const FRAME_BUDGET_MS = 10;
 	const allPlayer: CountsMap = new Map();
 	const allOpponent: CountsMap = new Map();
 	const byMode: Record<string, { player: CountsMap; opponent: CountsMap }> = {};
 
+	let frameStart = performance.now();
 	for (const game of processedGames) {
+		if (performance.now() - frameStart > FRAME_BUDGET_MS) {
+			if (signal?.cancelled) return null;
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+			frameStart = performance.now();
+		}
+
 		if (!byMode[game.mode]) {
 			byMode[game.mode] = { player: new Map(), opponent: new Map() };
 		}
@@ -151,6 +163,8 @@ export function buildAllModeFrequencyMaps(
 			}
 		}
 	}
+
+	if (signal?.cancelled) return null;
 
 	const result: Record<string, FrequencyMaps> = {
 		all: { player: toPositionData(allPlayer), opponent: toPositionData(allOpponent) },

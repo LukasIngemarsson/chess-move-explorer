@@ -6,6 +6,7 @@
 		processGames,
 		buildAllModeFrequencyMaps,
 		normalizeFenForLookup,
+		type BuildSignal,
 		type Game,
 		type ProcessedGame,
 		type FrequencyMaps,
@@ -38,15 +39,26 @@
 	// --- Processed games cache: chess.js runs once on load, results stored here ---
 	let processedGamesByColor = $state<Partial<Record<'white' | 'black', ProcessedGame[]>>>({});
 
-	// --- Pre-computed maps for every mode per color; rebuilds only when games change ---
-	let allModeMapsByColor = $derived.by(() => {
-		const result: Partial<Record<'white' | 'black', Record<string, FrequencyMaps>>> = {};
+	// --- Pre-computed maps for every mode per color; rebuilt async to avoid blocking the main thread ---
+	let allModeMapsByColor = $state<Partial<Record<'white' | 'black', Record<string, FrequencyMaps>>>>({});
+	let _buildSignal: BuildSignal = { cancelled: false };
+
+	async function rebuildMaps(games: Partial<Record<'white' | 'black', ProcessedGame[]>>) {
+		_buildSignal.cancelled = true;
+		const signal = (_buildSignal = { cancelled: false });
+		const result: typeof allModeMapsByColor = {};
 		for (const color of ['white', 'black'] as const) {
-			const processed = processedGamesByColor[color];
-			if (processed) result[color] = buildAllModeFrequencyMaps(processed, color);
+			const processed = games[color];
+			if (processed?.length) {
+				const maps = await buildAllModeFrequencyMaps(processed, color, signal);
+				if (signal.cancelled) return;
+				result[color] = maps!;
+			}
 		}
-		return result;
-	});
+		allModeMapsByColor = result;
+	}
+
+	$effect(() => { rebuildMaps(processedGamesByColor); });
 
 	// --- Active frequency maps: instant lookup, no computation ---
 	let frequencyMaps = $derived(
@@ -160,6 +172,7 @@
 
 	function resetExplorer(): void {
 		processedGamesByColor = {};
+		allModeMapsByColor = {};
 		moveHistory = [];
 		profile = null;
 		selectedMode = null;

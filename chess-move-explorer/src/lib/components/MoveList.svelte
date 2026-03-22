@@ -17,19 +17,33 @@
 
 	{#each moves as move}
 		<button
-			class="btn btn-ghost justify-between w-full font-mono"
+			class="btn btn-ghost w-full justify-between font-mono h-auto py-2"
 			onclick={() => onSelect(move.algebraicNotation)}
 		>
-			<span class="text-base font-semibold">{move.algebraicNotation}</span>
-			<span class="flex items-center gap-3 text-sm">
-				<span class="text-base-content/60">{move.count}×</span>
-				<span class="w-24">
-					<span
-						class="block h-2 rounded-full bg-primary"
-						style="width: {move.percentage}%"
-					></span>
+			<span class="text-base font-semibold w-10 text-left">{move.algebraicNotation}</span>
+
+			<span class="flex flex-1 items-center gap-3 text-sm min-w-0">
+				<span class="text-base-content/60 w-10 text-right shrink-0">{move.count}×</span>
+
+				<span class="flex flex-col gap-0.5 flex-1 min-w-0">
+					<!-- Move frequency bar -->
+					<span class="h-1.5 w-full rounded-full bg-base-200 overflow-hidden">
+						<span
+							class="h-full block rounded-full bg-primary/50"
+							style="width: {move.percentage}%"
+						></span>
+					</span>
+					<!-- Win / draw / loss bar -->
+					<span class="h-1.5 w-full rounded-full overflow-hidden flex">
+						<span class="bg-green-600" style="width: {move.winPercentage}%"></span>
+						<span class="bg-base-300" style="width: {move.drawPercentage}%"></span>
+						<span class="bg-red-800" style="width: {move.lossPercentage}%"></span>
+					</span>
 				</span>
-				<span class="w-8 text-right">{move.percentage}%</span>
+
+				<span class="text-xs text-base-content/50 w-20 text-right shrink-0">
+					W{move.winPercentage}% L{move.lossPercentage}%
+				</span>
 			</span>
 		</button>
 	{/each}

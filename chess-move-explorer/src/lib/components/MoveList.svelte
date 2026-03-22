@@ -25,7 +25,7 @@
 			<span class="flex flex-1 items-center gap-3 text-sm min-w-0">
 				<span class="flex flex-col items-end shrink-0 w-12">
 					<span class="text-primary/70">{move.count}×</span>
-					<span class="text-primary/70 text-xs">{move.percentage}%</span>
+					<span class="text-primary/70 text-xs">({move.percentage}%)</span>
 				</span>
 
 				<span class="flex flex-col gap-0.5 flex-1 min-w-0">

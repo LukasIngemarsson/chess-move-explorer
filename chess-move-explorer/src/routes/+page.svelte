@@ -25,6 +25,7 @@
 
 	// --- Profile state ---
 	let profile = $state<Profile | null>(null);
+	let selectedMode = $state<string | null>(null);
 
 	// --- Explorer state ---
 	let frequencyMaps = $state<{ player: MoveFrequencyMap; opponent: MoveFrequencyMap } | null>(null);
@@ -66,16 +67,20 @@
 		if (!username.trim()) return;
 		loading = true;
 		errorMessage = '';
-		resetExplorer();
+		frequencyMaps = null;
+		moveHistory = [];
 
 		try {
 			const gamesApiPath = platform === 'lichess' ? '/api/games/lichess' : '/api/games/chess-com';
 			const profileApiPath = platform === 'lichess' ? '/api/profile/lichess' : '/api/profile/chess-com';
 			const encodedUsername = encodeURIComponent(username);
 
+			const gamesParams = new URLSearchParams({ username, color: playerColor, max: '500' });
+			if (selectedMode) gamesParams.set('mode', selectedMode);
+
 			const [gamesResponse, profileResponse] = await Promise.all([
-				fetch(`${gamesApiPath}?username=${encodedUsername}&color=${playerColor}&max=500`),
-				fetch(`${profileApiPath}?username=${encodedUsername}`),
+				fetch(`${gamesApiPath}?${gamesParams}`),
+				profile ? Promise.resolve(null) : fetch(`${profileApiPath}?username=${encodedUsername}`),
 			]);
 
 			if (!gamesResponse.ok) {
@@ -86,7 +91,7 @@
 			const { games } = await gamesResponse.json() as { games: { moves: string; playerResult: 'win' | 'draw' | 'loss' }[] };
 			frequencyMaps = buildMoveFrequencyMap(games, playerColor);
 
-			if (profileResponse.ok) {
+			if (profileResponse?.ok) {
 				profile = await profileResponse.json() as Profile;
 			}
 		} catch (error) {
@@ -100,6 +105,12 @@
 		frequencyMaps = null;
 		moveHistory = [];
 		profile = null;
+		selectedMode = null;
+	}
+
+	async function selectMode(mode: string): Promise<void> {
+		selectedMode = selectedMode === mode ? null : mode;
+		await fetchGames();
 	}
 
 	function playMove(algebraicNotation: string): void {
@@ -202,14 +213,22 @@
 					<a href={profileUrl} target="_blank" rel="noopener noreferrer" class="font-semibold link link-hover">
 						{profile.username}
 					</a>
-					<div class="flex flex-wrap gap-3">
+					<div class="flex flex-wrap gap-2">
 						{#each profile.ratings as { mode, rating }}
-							<span class="badge badge-ghost gap-1">
+							<button
+								type="button"
+								class="badge gap-1 cursor-pointer {selectedMode === mode ? 'badge-primary' : 'badge-ghost'}"
+								onclick={() => selectMode(mode)}
+								title="{selectedMode === mode ? 'Click to show all modes' : `Click to filter by ${mode}`}"
+							>
 								<span class="capitalize">{mode}</span>
 								<span class="font-mono font-semibold">{rating}</span>
-							</span>
+							</button>
 						{/each}
 					</div>
+					{#if selectedMode}
+						<span class="text-sm text-base-content/60">Showing {selectedMode} only</span>
+					{/if}
 				</div>
 			</div>
 		{/if}

@@ -91,10 +91,12 @@ function normalizeGame(
 export const GET: RequestHandler = async ({ url }) => {
 	const username = url.searchParams.get('username');
 	const max = Math.min(parseInt(url.searchParams.get('max') ?? '500'), 500);
-	const playerColor = url.searchParams.get('color') as 'white' | 'black' | null;
+	const rawColor = url.searchParams.get('color');
 
 	if (!username) error(400, 'username is required');
-	if (playerColor !== 'white' && playerColor !== 'black') error(400, 'color must be white or black');
+	if (rawColor !== 'white' && rawColor !== 'black') error(400, 'color must be white or black');
+
+	const playerColor = rawColor;
 
 	const archivesResponse = await fetch(
 		`https://api.chess.com/pub/player/${encodeURIComponent(username)}/games/archives`,
@@ -115,7 +117,10 @@ export const GET: RequestHandler = async ({ url }) => {
 		recentArchiveUrls.map((archiveUrl) =>
 			fetch(archiveUrl, { headers: REQUEST_HEADERS })
 				.then((response) => response.json() as Promise<ChessComArchiveResponse>)
-				.catch(() => ({ games: [] } as ChessComArchiveResponse))
+				.catch((fetchError) => {
+					console.error(`Failed to fetch Chess.com archive ${archiveUrl}:`, fetchError);
+					return { games: [] } as ChessComArchiveResponse;
+				})
 		)
 	);
 

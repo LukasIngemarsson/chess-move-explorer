@@ -50,8 +50,7 @@
 		if (!username.trim()) return;
 		loading = true;
 		errorMessage = '';
-		frequencyMaps = null;
-		moveHistory = [];
+		resetExplorer();
 
 		try {
 			const apiPath = platform === 'lichess'
@@ -74,6 +73,11 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	function resetExplorer(): void {
+		frequencyMaps = null;
+		moveHistory = [];
 	}
 
 	function playMove(algebraicNotation: string): void {
@@ -113,21 +117,21 @@
 						<button
 							type="button"
 							class="join-item btn btn-sm {platform === 'lichess' ? 'btn-primary' : ''}"
-							onclick={() => { platform = 'lichess'; frequencyMaps = null; moveHistory = []; }}
+							onclick={() => { platform = 'lichess'; resetExplorer(); }}
 						>
 							Lichess
 						</button>
 						<button
 							type="button"
 							class="join-item btn btn-sm {platform === 'chess-com' ? 'btn-primary' : ''}"
-							onclick={() => { platform = 'chess-com'; frequencyMaps = null; moveHistory = []; }}
+							onclick={() => { platform = 'chess-com'; resetExplorer(); }}
 						>
 							Chess.com
 						</button>
 					</div>
 
 					<input
-						class="input input-bordered flex-1 min-w-48"
+						class="input input-bordered input-sm flex-1 min-w-48"
 						type="text"
 						placeholder="{platform === 'lichess' ? 'Lichess' : 'Chess.com'} username"
 						bind:value={username}
@@ -138,14 +142,14 @@
 						<button
 							type="button"
 							class="join-item btn btn-sm {playerColor === 'white' ? 'btn-primary' : ''}"
-							onclick={() => { playerColor = 'white'; frequencyMaps = null; moveHistory = []; }}
+							onclick={() => { playerColor = 'white'; resetExplorer(); }}
 						>
 							White
 						</button>
 						<button
 							type="button"
 							class="join-item btn btn-sm {playerColor === 'black' ? 'btn-primary' : ''}"
-							onclick={() => { playerColor = 'black'; frequencyMaps = null; moveHistory = []; }}
+							onclick={() => { playerColor = 'black'; resetExplorer(); }}
 						>
 							Black
 						</button>

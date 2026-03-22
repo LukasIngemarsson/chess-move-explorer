@@ -33,11 +33,6 @@ interface MoveStats {
 	losses: number;
 }
 
-/** Strip halfmove clock and fullmove counter so transpositions match. */
-function normalizeFen(fen: string): string {
-	return fen.split(' ').slice(0, 4).join(' ');
-}
-
 /**
  * Build move frequency maps from games pre-filtered to a single color.
  * Returns separate maps for the player's moves and the opponent's moves so the
@@ -60,7 +55,7 @@ export function buildMoveFrequencyMap(
 				(playerColor === 'black' && moveIndex % 2 === 1);
 
 			const targetMap = isPlayerMove ? playerMoveCounts : opponentMoveCounts;
-			const normalizedFen = normalizeFen(chessInstance.fen());
+			const normalizedFen = normalizeFenForLookup(chessInstance.fen());
 			const positionMoveCounts = targetMap.get(normalizedFen) ?? new Map<string, MoveStats>();
 			const algebraicNotation = movesInAlgebraicNotation[moveIndex];
 			const existing = positionMoveCounts.get(algebraicNotation) ?? { count: 0, wins: 0, draws: 0, losses: 0 };
@@ -120,17 +115,23 @@ function toPositionData(rawMoveCounts: Map<string, Map<string, MoveStats>>): Mov
 	for (const [fen, positionMoveCounts] of rawMoveCounts) {
 		const totalGames = [...positionMoveCounts.values()].reduce((total, stats) => total + stats.count, 0);
 		const moves: MoveFrequency[] = [...positionMoveCounts.entries()]
-			.map(([algebraicNotation, stats]) => ({
-				algebraicNotation,
-				count: stats.count,
-				percentage: Math.round((stats.count / totalGames) * 100),
-				winCount: stats.wins,
-				drawCount: stats.draws,
-				lossCount: stats.losses,
-				winPercentage: stats.count > 0 ? Math.round((stats.wins / stats.count) * 100) : 0,
-				drawPercentage: stats.count > 0 ? Math.round((stats.draws / stats.count) * 100) : 0,
-				lossPercentage: stats.count > 0 ? Math.round((stats.losses / stats.count) * 100) : 0,
-			}))
+			.map(([algebraicNotation, stats]) => {
+				// Derive lossPercentage as the remainder so the three segments always sum to 100.
+				const winPercentage = stats.count > 0 ? Math.round((stats.wins / stats.count) * 100) : 0;
+				const drawPercentage = stats.count > 0 ? Math.round((stats.draws / stats.count) * 100) : 0;
+				const lossPercentage = 100 - winPercentage - drawPercentage;
+				return {
+					algebraicNotation,
+					count: stats.count,
+					percentage: Math.round((stats.count / totalGames) * 100),
+					winCount: stats.wins,
+					drawCount: stats.draws,
+					lossCount: stats.losses,
+					winPercentage,
+					drawPercentage,
+					lossPercentage,
+				};
+			})
 			.sort((first, second) => second.count - first.count);
 		result.set(fen, { moves, totalGames });
 	}

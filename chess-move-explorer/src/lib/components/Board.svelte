@@ -2,6 +2,8 @@
 	import type { Api as ChessgroundApi } from 'chessground/api';
 	import type { Key } from 'chessground/types';
 
+	const HOVER_BRUSH = { key: 'hv', color: '#4682b4', opacity: 0.55, lineWidth: 6 };
+
 	interface BoardProps {
 		fen: string;
 		orientation: 'white' | 'black';
@@ -24,7 +26,7 @@
 
 	function toAutoShapes(squares: [string, string] | undefined) {
 		if (!squares) return [];
-		return [{ orig: squares[0] as Key, dest: squares[1] as Key, brush: 'paleBlue' }];
+		return [{ orig: squares[0] as Key, dest: squares[1] as Key, brush: HOVER_BRUSH.key }];
 	}
 
 	function chessboard(element: HTMLElement, initialBoardProps: BoardProps) {
@@ -40,7 +42,7 @@
 				movable: { free: false, color: undefined },
 				draggable: { enabled: false },
 				selectable: { enabled: false },
-				drawable: { autoShapes: toAutoShapes(latestBoardProps.hoverSquares) },
+				drawable: { brushes: [HOVER_BRUSH], autoShapes: toAutoShapes(latestBoardProps.hoverSquares) },
 			});
 		});
 

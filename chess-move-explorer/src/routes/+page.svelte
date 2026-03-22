@@ -11,12 +11,20 @@
 
 	type Platform = 'lichess' | 'chess-com';
 
+	interface Profile {
+		username: string;
+		ratings: { mode: string; rating: number }[];
+	}
+
 	// --- Form state ---
 	let username = $state('');
 	let platform = $state<Platform>('lichess');
 	let playerColor = $state<'white' | 'black'>('white');
 	let loading = $state(false);
 	let errorMessage = $state('');
+
+	// --- Profile state ---
+	let profile = $state<Profile | null>(null);
 
 	// --- Explorer state ---
 	let frequencyMaps = $state<{ player: MoveFrequencyMap; opponent: MoveFrequencyMap } | null>(null);
@@ -50,24 +58,30 @@
 		if (!username.trim()) return;
 		loading = true;
 		errorMessage = '';
+		profile = null;
 		resetExplorer();
 
 		try {
-			const apiPath = platform === 'lichess'
-				? '/api/games/lichess'
-				: '/api/games/chess-com';
+			const gamesApiPath = platform === 'lichess' ? '/api/games/lichess' : '/api/games/chess-com';
+			const profileApiPath = platform === 'lichess' ? '/api/profile/lichess' : '/api/profile/chess-com';
+			const encodedUsername = encodeURIComponent(username);
 
-			const response = await fetch(
-				`${apiPath}?username=${encodeURIComponent(username)}&color=${playerColor}&max=500`
-			);
+			const [gamesResponse, profileResponse] = await Promise.all([
+				fetch(`${gamesApiPath}?username=${encodedUsername}&color=${playerColor}&max=500`),
+				fetch(`${profileApiPath}?username=${encodedUsername}`),
+			]);
 
-			if (!response.ok) {
-				const body = await response.json().catch(() => ({})) as { message?: string };
-				throw new Error(body.message ?? `Error ${response.status}`);
+			if (!gamesResponse.ok) {
+				const body = await gamesResponse.json().catch(() => ({})) as { message?: string };
+				throw new Error(body.message ?? `Error ${gamesResponse.status}`);
 			}
 
-			const { games } = await response.json() as { games: { moves: string; playerResult: 'win' | 'draw' | 'loss' }[] };
+			const { games } = await gamesResponse.json() as { games: { moves: string; playerResult: 'win' | 'draw' | 'loss' }[] };
 			frequencyMaps = buildMoveFrequencyMap(games, playerColor);
+
+			if (profileResponse.ok) {
+				profile = await profileResponse.json() as Profile;
+			}
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Something went wrong';
 		} finally {
@@ -172,6 +186,23 @@
 				{/if}
 			</div>
 		</div>
+
+		<!-- Profile card -->
+		{#if profile}
+			<div class="card bg-base-100 shadow">
+				<div class="card-body py-3 flex-row flex-wrap items-center gap-4">
+					<span class="font-semibold">{profile.username}</span>
+					<div class="flex flex-wrap gap-3">
+						{#each profile.ratings as { mode, rating }}
+							<span class="badge badge-ghost gap-1">
+								<span class="capitalize">{mode}</span>
+								<span class="font-mono font-semibold">{rating}</span>
+							</span>
+						{/each}
+					</div>
+				</div>
+			</div>
+		{/if}
 
 		<!-- Explorer -->
 		{#if frequencyMaps}

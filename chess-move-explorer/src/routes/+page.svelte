@@ -284,6 +284,12 @@
 			<div class="alert alert-error shadow">
 				<span>{errorMessage}</span>
 			</div>
+
+			{#if moveHistory.length > 0}
+				<p class="text-sm font-mono text-base-content/60 break-all">
+					{moveHistory.join(' ')}
+				</p>
+			{/if}
 		{/if}
 
 		<!-- Profile card -->
@@ -342,14 +348,8 @@
 
 				<!-- Board + navigation -->
 				<div class="card bg-base-100 shadow" bind:clientHeight={boardCardHeight}>
-					<div class="card-body gap-4">
+					<div class="card-body">
 						<Board fen={boardState.fen} {orientation} lastMove={boardState.lastMovedSquares} />
-
-						{#if moveHistory.length > 0}
-							<p class="text-sm font-mono text-base-content/60 break-all">
-								{moveHistory.join(' ')}
-							</p>
-						{/if}
 					</div>
 				</div>
 

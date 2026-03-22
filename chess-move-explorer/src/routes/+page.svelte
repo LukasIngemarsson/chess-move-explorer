@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { Chess } from 'chess.js';
 	import Board from '$lib/components/Board.svelte';
 	import MoveList from '$lib/components/MoveList.svelte';
@@ -207,10 +208,13 @@
 		selectedMode = null;
 	}
 
-	function playMove(algebraicNotation: string): void {
+	async function playMove(algebraicNotation: string): Promise<void> {
 		const isFirst = moveHistory.length === 0;
 		moveHistory = [...moveHistory, algebraicNotation];
-		if (isFirst) moveLogEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+		if (isFirst) {
+			await tick();
+			moveLogEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+		}
 	}
 
 	function stepBack(): void {

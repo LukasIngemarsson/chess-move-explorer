@@ -69,10 +69,12 @@ function computePlayerResult(
 function normalizeGame(
 	game: ChessComGame,
 	username: string,
-	playerColor: 'white' | 'black'
+	playerColor: 'white' | 'black',
+	mode: string | null
 ): Game | null {
 	// Skip correspondence games — daily time control has very different preparation patterns.
 	if (game.time_class === 'daily') return null;
+	if (mode && game.time_class !== mode) return null;
 
 	const headers = extractPgnHeaders(game.pgn);
 
@@ -92,6 +94,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	const username = url.searchParams.get('username');
 	const max = Math.min(parseInt(url.searchParams.get('max') ?? '500'), 500);
 	const rawColor = url.searchParams.get('color');
+	const mode = url.searchParams.get('mode');
 
 	if (!username) error(400, 'username is required');
 	if (rawColor !== 'white' && rawColor !== 'black') error(400, 'color must be white or black');
@@ -129,7 +132,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	for (const { games } of archiveResponses) {
 		for (const game of [...games].reverse()) {
 			if (normalizedGames.length >= max) break;
-			const normalized = normalizeGame(game, username, playerColor);
+			const normalized = normalizeGame(game, username, playerColor, mode);
 			if (normalized) normalizedGames.push(normalized);
 		}
 		if (normalizedGames.length >= max) break;

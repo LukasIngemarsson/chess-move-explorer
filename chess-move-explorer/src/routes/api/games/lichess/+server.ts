@@ -19,10 +19,13 @@ function computePlayerResult(
 export const GET: RequestHandler = async ({ url }) => {
 	const username = url.searchParams.get('username');
 	const max = Math.min(parseInt(url.searchParams.get('max') ?? '500'), 500);
-	const playerColor = url.searchParams.get('color') as 'white' | 'black' | null;
+	const rawColor = url.searchParams.get('color');
+	const mode = url.searchParams.get('mode');
 
 	if (!username) error(400, 'username is required');
-	if (playerColor !== 'white' && playerColor !== 'black') error(400, 'color must be white or black');
+	if (rawColor !== 'white' && rawColor !== 'black') error(400, 'color must be white or black');
+
+	const playerColor = rawColor;
 
 	const params = new URLSearchParams({
 		max: String(max),
@@ -32,6 +35,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		opening: 'false',
 		color: playerColor,
 	});
+	if (mode) params.set('perfType', mode);
 
 	const response = await fetch(
 		`https://lichess.org/api/games/user/${encodeURIComponent(username)}?${params}`,

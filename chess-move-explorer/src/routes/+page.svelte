@@ -11,12 +11,21 @@
 
 	type Platform = 'lichess' | 'chess-com';
 
+	interface Profile {
+		username: string;
+		ratings: { mode: string; rating: number | null }[];
+	}
+
 	// --- Form state ---
 	let username = $state('');
 	let platform = $state<Platform>('lichess');
 	let playerColor = $state<'white' | 'black'>('white');
 	let loading = $state(false);
 	let errorMessage = $state('');
+
+	// --- Profile state ---
+	let profile = $state<Profile | null>(null);
+	let selectedMode = $state<string | null>(null);
 
 	// --- Explorer state ---
 	let frequencyMaps = $state<{ player: MoveFrequencyMap; opponent: MoveFrequencyMap } | null>(null);
@@ -46,28 +55,46 @@
 
 	let orientation = $derived<'white' | 'black'>(playerColor);
 
+	let profileUrl = $derived(
+		profile
+			? platform === 'lichess'
+				? `https://lichess.org/@/${encodeURIComponent(profile.username)}`
+				: `https://www.chess.com/member/${encodeURIComponent(profile.username)}`
+			: null
+	);
+
 	async function fetchGames(): Promise<void> {
 		if (!username.trim()) return;
 		loading = true;
 		errorMessage = '';
-		resetExplorer();
+		profile = null;
+		frequencyMaps = null;
+		moveHistory = [];
 
 		try {
-			const apiPath = platform === 'lichess'
-				? '/api/games/lichess'
-				: '/api/games/chess-com';
+			const gamesApiPath = platform === 'lichess' ? '/api/games/lichess' : '/api/games/chess-com';
+			const profileApiPath = platform === 'lichess' ? '/api/profile/lichess' : '/api/profile/chess-com';
+			const encodedUsername = encodeURIComponent(username);
 
-			const response = await fetch(
-				`${apiPath}?username=${encodeURIComponent(username)}&color=${playerColor}&max=500`
-			);
+			const gamesParams = new URLSearchParams({ username, color: playerColor, max: '500' });
+			if (selectedMode) gamesParams.set('mode', selectedMode);
 
-			if (!response.ok) {
-				const body = await response.json().catch(() => ({})) as { message?: string };
-				throw new Error(body.message ?? `Error ${response.status}`);
+			const [gamesResponse, profileResponse] = await Promise.all([
+				fetch(`${gamesApiPath}?${gamesParams}`),
+				profile ? Promise.resolve(null) : fetch(`${profileApiPath}?username=${encodedUsername}`),
+			]);
+
+			if (!gamesResponse.ok) {
+				const body = await gamesResponse.json().catch(() => ({})) as { message?: string };
+				throw new Error(body.message ?? `Error ${gamesResponse.status}`);
 			}
 
-			const { games } = await response.json() as { games: { moves: string; playerResult: 'win' | 'draw' | 'loss' }[] };
+			const { games } = await gamesResponse.json() as { games: { moves: string; playerResult: 'win' | 'draw' | 'loss' }[] };
 			frequencyMaps = buildMoveFrequencyMap(games, playerColor);
+
+			if (profileResponse?.ok) {
+				profile = await profileResponse.json() as Profile;
+			}
 		} catch (error) {
 			errorMessage = error instanceof Error ? error.message : 'Something went wrong';
 		} finally {
@@ -78,6 +105,20 @@
 	function resetExplorer(): void {
 		frequencyMaps = null;
 		moveHistory = [];
+		profile = null;
+		selectedMode = null;
+	}
+
+	async function selectMode(mode: string): Promise<void> {
+		selectedMode = selectedMode === mode ? null : mode;
+		await fetchGames();
+	}
+
+	async function selectColor(color: 'white' | 'black'): Promise<void> {
+		if (playerColor === color) return;
+		playerColor = color;
+		selectedMode = null;
+		await fetchGames();
 	}
 
 	function playMove(algebraicNotation: string): void {
@@ -102,14 +143,14 @@
 
 		<!-- Header + form -->
 		<div class="card bg-base-100 shadow">
-			<div class="card-body">
+			<div class="card-body items-center text-center">
 				<h1 class="card-title text-2xl">Chess Move Explorer</h1>
 				<p class="text-base-content/60 text-sm">
 					Analyze your move tendencies by position across your games.
 				</p>
 
 				<form
-					class="flex flex-wrap gap-3 mt-2"
+					class="flex flex-wrap gap-3 mt-2 justify-center"
 					onsubmit={(e) => { e.preventDefault(); fetchGames(); }}
 				>
 					<!-- Platform toggle -->
@@ -131,31 +172,13 @@
 					</div>
 
 					<input
-						class="input input-bordered input-sm flex-1 min-w-48"
+						class="input input-bordered input-sm w-64"
 						type="text"
 						placeholder="{platform === 'lichess' ? 'Lichess' : 'Chess.com'} username"
 						bind:value={username}
 					/>
 
-					<!-- Color toggle -->
-					<div class="join">
-						<button
-							type="button"
-							class="join-item btn btn-sm {playerColor === 'white' ? 'btn-primary' : ''}"
-							onclick={() => { playerColor = 'white'; resetExplorer(); }}
-						>
-							White
-						</button>
-						<button
-							type="button"
-							class="join-item btn btn-sm {playerColor === 'black' ? 'btn-primary' : ''}"
-							onclick={() => { playerColor = 'black'; resetExplorer(); }}
-						>
-							Black
-						</button>
-					</div>
-
-					<button class="btn btn-sm btn-primary" type="submit" disabled={loading || !username.trim()}>
+					<button class="btn btn-sm btn-primary w-24" type="submit" disabled={loading || !username.trim()}>
 						{#if loading}
 							<span class="loading loading-spinner loading-xs"></span>
 							Loading…
@@ -165,13 +188,66 @@
 					</button>
 				</form>
 
-				{#if errorMessage}
-					<div class="alert alert-error mt-2">
-						<span>{errorMessage}</span>
-					</div>
-				{/if}
-			</div>
+				</div>
 		</div>
+
+		{#if errorMessage}
+			<div class="alert alert-error shadow">
+				<span>{errorMessage}</span>
+			</div>
+		{/if}
+
+		<!-- Profile card -->
+		{#if profile}
+			<div class="card bg-base-100 shadow">
+				<div class="card-body py-3 flex-row flex-wrap items-center gap-4">
+					<a href={profileUrl} target="_blank" rel="noopener noreferrer" class="font-semibold link link-hover">
+						{profile.username}
+					</a>
+					<div class="join">
+						<button
+							type="button"
+							class="join-item btn btn-xs {playerColor === 'white' ? 'btn-primary' : ''}"
+							onclick={() => selectColor('white')}
+							disabled={loading}
+						>
+							White
+						</button>
+						<button
+							type="button"
+							class="join-item btn btn-xs {playerColor === 'black' ? 'btn-primary' : ''}"
+							onclick={() => selectColor('black')}
+							disabled={loading}
+						>
+							Black
+						</button>
+					</div>
+					<div class="flex flex-wrap gap-2">
+						{#each profile.ratings as { mode, rating }}
+							{#if rating !== null}
+								<button
+									type="button"
+									class="badge gap-1 cursor-pointer {selectedMode === mode ? 'badge-primary' : 'badge-ghost'}"
+									onclick={() => selectMode(mode)}
+									title="{selectedMode === mode ? 'Click to show all modes' : `Click to filter by ${mode}`}"
+								>
+									<span class="capitalize">{mode}</span>
+									<span class="font-mono font-semibold">{rating}</span>
+								</button>
+							{:else}
+								<span class="badge badge-ghost gap-1 opacity-40" title="No {mode} games played">
+									<span class="capitalize">{mode}</span>
+									<span class="font-mono">—</span>
+								</span>
+							{/if}
+						{/each}
+					</div>
+					{#if selectedMode}
+						<span class="text-sm text-base-content/60">Showing {selectedMode} only</span>
+					{/if}
+				</div>
+			</div>
+		{/if}
 
 		<!-- Explorer -->
 		{#if frequencyMaps}

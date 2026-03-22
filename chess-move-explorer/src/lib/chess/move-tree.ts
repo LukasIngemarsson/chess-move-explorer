@@ -65,19 +65,20 @@ export async function processGames(
 ): Promise<ProcessedGame[]> {
 	// Yield to the browser at frame boundaries (every ~10 ms of work) so
 	// the UI (e.g. a loading spinner) keeps painting smoothly.
-	// onProgress fires only once, after the first PREVIEW_THRESHOLD games, so the
-	// explorer shows early with common opening moves without repeated expensive rebuilds.
+	// onProgress fires at evenly-spaced checkpoints (25%, 50%, 75% of total games,
+	// minimum 50 games) — few enough that the $derived rebuild cost is negligible,
+	// deferred via setTimeout so the current frame paints cleanly first.
 	const FRAME_BUDGET_MS = 10;
-	const PREVIEW_THRESHOLD = 50;
+	const CHECKPOINTS = [0.25, 0.5, 0.75].map((f) => Math.max(50, Math.floor(games.length * f)));
+	let nextCheckpoint = 0;
 	const result: ProcessedGame[] = [];
-	let previewFired = false;
 	let frameStart = performance.now();
 	for (let i = 0; i < games.length; i++) {
 		if (performance.now() - frameStart > FRAME_BUDGET_MS) {
 			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 			frameStart = performance.now();
-			if (onProgress && !previewFired && result.length >= PREVIEW_THRESHOLD) {
-				previewFired = true;
+			if (onProgress && nextCheckpoint < CHECKPOINTS.length && result.length >= CHECKPOINTS[nextCheckpoint]) {
+				nextCheckpoint++;
 				// Defer to a macrotask so the current frame paints cleanly first.
 				setTimeout(() => onProgress(result), 0);
 			}

@@ -390,20 +390,7 @@
 								</button>
 							</div>
 						</div>
-						{#if moveHistory.length > 0}
-						<div class="flex flex-wrap items-baseline gap-x-1 gap-y-1 font-mono text-sm text-base-content/70 py-2 border-t border-base-200">
-							{#each moveHistory as move, i}
-								{#if i % 2 === 0}
-									<span class="text-base-content/40 select-none">{Math.floor(i / 2) + 1}.</span>
-								{/if}
-								<button
-									class="hover:text-base-content transition-colors {i === moveHistory.length - 1 ? 'text-base-content font-semibold' : ''}"
-									onclick={() => { moveHistory = moveHistory.slice(0, i + 1); }}
-								>{move}</button>
-							{/each}
-						</div>
-					{/if}
-					<div class="flex-1 min-h-0 overflow-y-auto">
+						<div class="flex-1 min-h-0 overflow-y-auto">
 							<MoveList
 								moves={positionData.moves}
 								totalGames={positionData.totalGames}
@@ -413,6 +400,19 @@
 								progress={loadingProgress}
 							/>
 						</div>
+						{#if moveHistory.length > 0}
+							<div class="flex flex-wrap items-baseline gap-x-1 gap-y-1 font-mono text-sm text-base-content/70 py-2 border-t border-base-200">
+								{#each moveHistory as move, i}
+									{#if i % 2 === 0}
+										<span class="text-base-content/40 select-none">{Math.floor(i / 2) + 1}.</span>
+									{/if}
+									<button
+										class="hover:text-base-content transition-colors {i === moveHistory.length - 1 ? 'text-base-content font-semibold' : ''}"
+										onclick={() => { moveHistory = moveHistory.slice(0, i + 1); }}
+									>{move}</button>
+								{/each}
+							</div>
+						{/if}
 					</div>
 				</div>
 

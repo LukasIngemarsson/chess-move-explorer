@@ -353,8 +353,8 @@
 				</div>
 
 				<!-- Move list -->
-				<div class="card bg-base-100 shadow">
-					<div class="card-body">
+				<div class="card bg-base-100 shadow overflow-hidden flex flex-col">
+					<div class="card-body flex-1 flex flex-col overflow-hidden">
 						<div class="flex items-center justify-between mb-1">
 							<h2 class="card-title text-base">
 								{isPlayerTurn ? 'Your moves from here' : "Opponent's moves from here"}
@@ -376,13 +376,15 @@
 								</button>
 							</div>
 						</div>
-						<MoveList
-							moves={positionData.moves}
-							totalGames={positionData.totalGames}
-							onSelect={playMove}
-							updating={loading}
-							progress={loadingProgress}
-						/>
+						<div class="flex-1 min-h-0 overflow-y-auto">
+							<MoveList
+								moves={positionData.moves}
+								totalGames={positionData.totalGames}
+								onSelect={playMove}
+								updating={loading}
+								progress={loadingProgress}
+							/>
+						</div>
 					</div>
 				</div>
 

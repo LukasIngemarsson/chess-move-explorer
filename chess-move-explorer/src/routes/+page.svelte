@@ -54,11 +54,18 @@
 
 	let orientation = $derived<'white' | 'black'>(playerColor);
 
+	let profileUrl = $derived(
+		profile
+			? platform === 'lichess'
+				? `https://lichess.org/@/${encodeURIComponent(profile.username)}`
+				: `https://www.chess.com/member/${encodeURIComponent(profile.username)}`
+			: null
+	);
+
 	async function fetchGames(): Promise<void> {
 		if (!username.trim()) return;
 		loading = true;
 		errorMessage = '';
-		profile = null;
 		resetExplorer();
 
 		try {
@@ -92,6 +99,7 @@
 	function resetExplorer(): void {
 		frequencyMaps = null;
 		moveHistory = [];
+		profile = null;
 	}
 
 	function playMove(algebraicNotation: string): void {
@@ -191,7 +199,9 @@
 		{#if profile}
 			<div class="card bg-base-100 shadow">
 				<div class="card-body py-3 flex-row flex-wrap items-center gap-4">
-					<span class="font-semibold">{profile.username}</span>
+					<a href={profileUrl} target="_blank" rel="noopener noreferrer" class="font-semibold link link-hover">
+						{profile.username}
+					</a>
 					<div class="flex flex-wrap gap-3">
 						{#each profile.ratings as { mode, rating }}
 							<span class="badge badge-ghost gap-1">

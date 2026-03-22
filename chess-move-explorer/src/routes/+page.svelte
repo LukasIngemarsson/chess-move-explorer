@@ -4,17 +4,19 @@
 	import MoveList from '$lib/components/MoveList.svelte';
 	import {
 		buildMoveFrequencyMap,
-		mergeFrequencyMaps,
 		normalizeFenForLookup,
 		type MoveFrequencyMap,
 		type PositionData,
 	} from '$lib/chess/move-tree';
 
+	type Platform = 'lichess' | 'chess-com';
+
 	// --- Form state ---
 	let username = $state('');
-	let color = $state<'white' | 'black' | 'both'>('white');
+	let platform = $state<Platform>('lichess');
+	let playerColor = $state<'white' | 'black'>('white');
 	let loading = $state(false);
-	let errorMsg = $state('');
+	let errorMessage = $state('');
 
 	// --- Explorer state ---
 	let frequencyMaps = $state<{ player: MoveFrequencyMap; opponent: MoveFrequencyMap } | null>(null);
@@ -33,7 +35,7 @@
 		return { fen: chessInstance.fen(), lastMovedSquares, sideToMove };
 	});
 
-	let isPlayerTurn = $derived(color === 'both' || color === boardState.sideToMove);
+	let isPlayerTurn = $derived(playerColor === boardState.sideToMove);
 
 	let positionData = $derived.by<PositionData>(() => {
 		if (!frequencyMaps) return { moves: [], totalGames: 0 };
@@ -42,41 +44,33 @@
 		return relevantMap.get(normalizedFen) ?? { moves: [], totalGames: 0 };
 	});
 
-	let orientation = $derived<'white' | 'black'>(color === 'black' ? 'black' : 'white');
-
-	async function fetchGamesForColor(
-		playerColor: 'white' | 'black'
-	): Promise<{ player: MoveFrequencyMap; opponent: MoveFrequencyMap }> {
-		const response = await fetch(
-			`/api/games/lichess?username=${encodeURIComponent(username)}&color=${playerColor}&max=500`
-		);
-		if (!response.ok) {
-			const body = await response.json().catch(() => ({})) as { message?: string };
-			throw new Error(body.message ?? `Error ${response.status}`);
-		}
-		const { games } = await response.json() as { games: { moves: string }[] };
-		return buildMoveFrequencyMap(games, playerColor);
-	}
+	let orientation = $derived<'white' | 'black'>(playerColor);
 
 	async function fetchGames(): Promise<void> {
 		if (!username.trim()) return;
 		loading = true;
-		errorMsg = '';
+		errorMessage = '';
 		frequencyMaps = null;
 		moveHistory = [];
 
 		try {
-			if (color === 'both') {
-				const [whiteResult, blackResult] = await Promise.all([
-					fetchGamesForColor('white'),
-					fetchGamesForColor('black'),
-				]);
-				frequencyMaps = mergeFrequencyMaps(whiteResult, blackResult);
-			} else {
-				frequencyMaps = await fetchGamesForColor(color);
+			const apiPath = platform === 'lichess'
+				? '/api/games/lichess'
+				: '/api/games/chess-com';
+
+			const response = await fetch(
+				`${apiPath}?username=${encodeURIComponent(username)}&color=${playerColor}&max=500`
+			);
+
+			if (!response.ok) {
+				const body = await response.json().catch(() => ({})) as { message?: string };
+				throw new Error(body.message ?? `Error ${response.status}`);
 			}
-		} catch (e) {
-			errorMsg = e instanceof Error ? e.message : 'Something went wrong';
+
+			const { games } = await response.json() as { games: { moves: string; playerResult: 'win' | 'draw' | 'loss' }[] };
+			frequencyMaps = buildMoveFrequencyMap(games, playerColor);
+		} catch (error) {
+			errorMessage = error instanceof Error ? error.message : 'Something went wrong';
 		} finally {
 			loading = false;
 		}
@@ -107,39 +101,69 @@
 			<div class="card-body">
 				<h1 class="card-title text-2xl">Chess Move Explorer</h1>
 				<p class="text-base-content/60 text-sm">
-					Analyse your move tendencies by position across your Lichess games.
+					Analyze your move tendencies by position across your games.
 				</p>
 
 				<form
 					class="flex flex-wrap gap-3 mt-2"
 					onsubmit={(e) => { e.preventDefault(); fetchGames(); }}
 				>
+					<!-- Platform toggle -->
+					<div class="join">
+						<button
+							type="button"
+							class="join-item btn btn-sm {platform === 'lichess' ? 'btn-primary' : 'btn-outline'}"
+							onclick={() => { platform = 'lichess'; frequencyMaps = null; moveHistory = []; }}
+						>
+							Lichess
+						</button>
+						<button
+							type="button"
+							class="join-item btn btn-sm {platform === 'chess-com' ? 'btn-primary' : 'btn-outline'}"
+							onclick={() => { platform = 'chess-com'; frequencyMaps = null; moveHistory = []; }}
+						>
+							Chess.com
+						</button>
+					</div>
+
 					<input
 						class="input input-bordered flex-1 min-w-48"
 						type="text"
-						placeholder="Lichess username"
+						placeholder="{platform === 'lichess' ? 'Lichess' : 'Chess.com'} username"
 						bind:value={username}
 					/>
 
-					<select class="select select-bordered" bind:value={color}>
-						<option value="white">As white</option>
-						<option value="black">As black</option>
-						<option value="both">Both colors</option>
-					</select>
+					<!-- Color toggle -->
+					<div class="join">
+						<button
+							type="button"
+							class="join-item btn btn-sm {playerColor === 'white' ? 'btn-primary' : 'btn-outline'}"
+							onclick={() => { playerColor = 'white'; frequencyMaps = null; moveHistory = []; }}
+						>
+							White
+						</button>
+						<button
+							type="button"
+							class="join-item btn btn-sm {playerColor === 'black' ? 'btn-primary' : 'btn-outline'}"
+							onclick={() => { playerColor = 'black'; frequencyMaps = null; moveHistory = []; }}
+						>
+							Black
+						</button>
+					</div>
 
-					<button class="btn btn-primary" type="submit" disabled={loading || !username.trim()}>
+					<button class="btn btn-sm btn-primary" type="submit" disabled={loading || !username.trim()}>
 						{#if loading}
-							<span class="loading loading-spinner loading-sm"></span>
+							<span class="loading loading-spinner loading-xs"></span>
 							Loading…
 						{:else}
-							Analyse
+							Analyze
 						{/if}
 					</button>
 				</form>
 
-				{#if errorMsg}
+				{#if errorMessage}
 					<div class="alert alert-error mt-2">
-						<span>{errorMsg}</span>
+						<span>{errorMessage}</span>
 					</div>
 				{/if}
 			</div>
@@ -149,7 +173,7 @@
 		{#if frequencyMaps}
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-				<!-- Board + nav -->
+				<!-- Board + navigation -->
 				<div class="card bg-base-100 shadow">
 					<div class="card-body gap-4">
 						<Board fen={boardState.fen} {orientation} lastMove={boardState.lastMovedSquares} />
@@ -161,10 +185,18 @@
 						{/if}
 
 						<div class="flex gap-2">
-							<button class="btn btn-sm btn-ghost" onclick={stepBack} disabled={moveHistory.length === 0}>
+							<button
+								class="btn btn-sm btn-ghost"
+								onclick={stepBack}
+								disabled={moveHistory.length === 0}
+							>
 								← Back
 							</button>
-							<button class="btn btn-sm btn-ghost" onclick={reset} disabled={moveHistory.length === 0}>
+							<button
+								class="btn btn-sm btn-ghost"
+								onclick={reset}
+								disabled={moveHistory.length === 0}
+							>
 								Reset
 							</button>
 						</div>

@@ -1,27 +1,28 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { error, json } from '@sveltejs/kit';
+import type { Game } from '$lib/chess/move-tree';
 
 interface LichessGame {
-	id: string;
-	rated: boolean;
 	variant: string;
-	speed: string;
-	status: string;
 	moves: string;
-	players: {
-		white: { user?: { name: string } };
-		black: { user?: { name: string } };
-	};
+	winner?: 'white' | 'black';
+}
+
+function computePlayerResult(
+	winner: 'white' | 'black' | undefined,
+	playerColor: 'white' | 'black'
+): 'win' | 'draw' | 'loss' {
+	if (!winner) return 'draw';
+	return winner === playerColor ? 'win' : 'loss';
 }
 
 export const GET: RequestHandler = async ({ url }) => {
 	const username = url.searchParams.get('username');
 	const max = Math.min(parseInt(url.searchParams.get('max') ?? '500'), 500);
-	const color = url.searchParams.get('color') as 'white' | 'black' | null;
+	const playerColor = url.searchParams.get('color') as 'white' | 'black' | null;
 
-	if (!username) {
-		error(400, 'username is required');
-	}
+	if (!username) error(400, 'username is required');
+	if (playerColor !== 'white' && playerColor !== 'black') error(400, 'color must be white or black');
 
 	const params = new URLSearchParams({
 		max: String(max),
@@ -29,17 +30,12 @@ export const GET: RequestHandler = async ({ url }) => {
 		clocks: 'false',
 		evals: 'false',
 		opening: 'false',
+		color: playerColor,
 	});
-
-	if (color === 'white' || color === 'black') {
-		params.set('color', color);
-	}
 
 	const response = await fetch(
 		`https://lichess.org/api/games/user/${encodeURIComponent(username)}?${params}`,
-		{
-			headers: { Accept: 'application/x-ndjson' },
-		}
+		{ headers: { Accept: 'application/x-ndjson' } }
 	);
 
 	if (!response.ok) {
@@ -48,11 +44,15 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 
 	const text = await response.text();
-	const games: LichessGame[] = text
+	const games: Game[] = text
 		.split('\n')
 		.filter(Boolean)
-		.map((line) => JSON.parse(line))
-		.filter((g: LichessGame) => g.variant === 'standard' && g.moves);
+		.map((line) => JSON.parse(line) as LichessGame)
+		.filter((game) => game.variant === 'standard' && game.moves)
+		.map((game) => ({
+			moves: game.moves,
+			playerResult: computePlayerResult(game.winner, playerColor),
+		}));
 
-	return json({ games, username });
+	return json({ games });
 };

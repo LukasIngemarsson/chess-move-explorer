@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { tick } from 'svelte';
 	import { Chess } from 'chess.js';
 	import Board from '$lib/components/Board.svelte';
 	import MoveList from '$lib/components/MoveList.svelte';
@@ -68,7 +67,6 @@
 
 	// moveHistory is the single source of truth; board state is fully derived from it.
 	let moveHistory = $state<string[]>([]);
-	let moveLogEl = $state<HTMLElement | null>(null);
 
 	// --- Derived board state ---
 	let boardState = $derived.by(() => {
@@ -208,13 +206,8 @@
 		selectedMode = null;
 	}
 
-	async function playMove(algebraicNotation: string): Promise<void> {
-		const isFirst = moveHistory.length === 0;
+	function playMove(algebraicNotation: string): void {
 		moveHistory = [...moveHistory, algebraicNotation];
-		if (isFirst) {
-			await tick();
-			moveLogEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-		}
 	}
 
 	function stepBack(): void {
@@ -397,7 +390,20 @@
 								</button>
 							</div>
 						</div>
-						<div class="flex-1 min-h-0 overflow-y-auto">
+						{#if moveHistory.length > 0}
+						<div class="flex flex-wrap items-baseline gap-x-1 gap-y-1 font-mono text-sm text-base-content/70 py-2 border-t border-base-200">
+							{#each moveHistory as move, i}
+								{#if i % 2 === 0}
+									<span class="text-base-content/40 select-none">{Math.floor(i / 2) + 1}.</span>
+								{/if}
+								<button
+									class="hover:text-base-content transition-colors {i === moveHistory.length - 1 ? 'text-base-content font-semibold' : ''}"
+									onclick={() => { moveHistory = moveHistory.slice(0, i + 1); }}
+								>{move}</button>
+							{/each}
+						</div>
+					{/if}
+					<div class="flex-1 min-h-0 overflow-y-auto">
 							<MoveList
 								moves={positionData.moves}
 								totalGames={positionData.totalGames}
@@ -412,19 +418,6 @@
 
 			</div>
 
-		{#if moveHistory.length > 0}
-			<div bind:this={moveLogEl} class="flex flex-wrap items-baseline gap-x-1 gap-y-1 font-mono text-sm text-base-content/70 px-1">
-				{#each moveHistory as move, i}
-					{#if i % 2 === 0}
-						<span class="text-base-content/40 select-none">{Math.floor(i / 2) + 1}.</span>
-					{/if}
-					<button
-						class="hover:text-base-content transition-colors {i === moveHistory.length - 1 ? 'text-base-content font-semibold' : ''}"
-						onclick={() => { moveHistory = moveHistory.slice(0, i + 1); }}
-					>{move}</button>
-				{/each}
-			</div>
-		{/if}
 		{/if}
 
 	</div>

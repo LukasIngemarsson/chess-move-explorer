@@ -79,8 +79,10 @@ export async function processGames(
 			frameStart = performance.now();
 			const now = performance.now();
 			if (onProgress && now - lastProgressAt >= PROGRESS_INTERVAL_MS) {
-				onProgress(result);
 				lastProgressAt = now;
+				// Defer via setTimeout so the current frame paints cleanly before
+				// the expensive $derived recomputation runs.
+				setTimeout(() => onProgress(result), 0);
 			}
 		}
 		const game = games[i];

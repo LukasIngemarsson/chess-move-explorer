@@ -405,7 +405,7 @@
 							/>
 						</div>
 						{#if moveHistory.length > 0}
-							<div bind:this={moveLogEl} class="flex flex-wrap items-baseline gap-x-1 gap-y-1 font-mono text-sm text-base-content/70 py-2 border-t border-base-200 max-h-20 overflow-y-auto">
+							<div bind:this={moveLogEl} class="flex flex-wrap items-baseline gap-x-1 gap-y-1 font-mono text-sm text-base-content/70 pt-2 border-t border-base-200 max-h-20 overflow-y-auto">
 								{#each moveHistory as move, i}
 									{#if i % 2 === 0}
 										<span class="text-base-content/40 select-none">{Math.floor(i / 2) + 1}.</span>

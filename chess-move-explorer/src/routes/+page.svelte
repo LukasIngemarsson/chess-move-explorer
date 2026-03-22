@@ -355,6 +355,7 @@
 							moves={positionData.moves}
 							totalGames={positionData.totalGames}
 							onSelect={playMove}
+							updating={loading}
 						/>
 					</div>
 				</div>

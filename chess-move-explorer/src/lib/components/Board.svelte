@@ -24,10 +24,7 @@
 
 	function toAutoShapes(squares: [string, string] | undefined) {
 		if (!squares) return [];
-		return [
-			{ orig: squares[0] as Key, brush: 'paleBlue' },
-			{ orig: squares[1] as Key, brush: 'paleBlue' },
-		];
+		return [{ orig: squares[0] as Key, dest: squares[1] as Key, brush: 'paleBlue' }];
 	}
 
 	function chessboard(element: HTMLElement, initialBoardProps: BoardProps) {

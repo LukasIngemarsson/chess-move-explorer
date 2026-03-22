@@ -135,7 +135,7 @@
 
 		<!-- Header + form -->
 		<div class="card bg-base-100 shadow">
-			<div class="card-body">
+			<div class="card-body items-center text-center">
 				<h1 class="card-title text-2xl">Chess Move Explorer</h1>
 				<p class="text-base-content/60 text-sm">
 					Analyze your move tendencies by position across your games.

@@ -3,9 +3,12 @@
 	import Board from '$lib/components/Board.svelte';
 	import MoveList from '$lib/components/MoveList.svelte';
 	import {
-		buildMoveFrequencyMap,
+		processGames,
+		buildAllModeFrequencyMaps,
 		normalizeFenForLookup,
 		type Game,
+		type ProcessedGame,
+		type FrequencyMaps,
 		type PositionData,
 	} from '$lib/chess/move-tree';
 
@@ -23,22 +26,31 @@
 	// 0 = all games
 	let maxGames = $state(500);
 	let loading = $state(false);
+	let loadingStatus = $state('');
+	let loadingElapsed = $state(0);
 	let errorMessage = $state('');
 
 	// --- Profile state ---
 	let profile = $state<Profile | null>(null);
 	let selectedMode = $state<string | null>(null);
 
-	// --- Games cache: keyed by color, populated on demand ---
-	let gamesByColor = $state<Partial<Record<'white' | 'black', Game[]>>>({});
+	// --- Processed games cache: chess.js runs once on load, results stored here ---
+	let processedGamesByColor = $state<Partial<Record<'white' | 'black', ProcessedGame[]>>>({});
 
-	// --- Derived frequency maps: recomputed instantly when mode or cached games change ---
-	let frequencyMaps = $derived.by(() => {
-		const games = gamesByColor[playerColor];
-		if (!games) return null;
-		const filtered = selectedMode ? games.filter((game) => game.mode === selectedMode) : games;
-		return buildMoveFrequencyMap(filtered, playerColor);
+	// --- Pre-computed maps for every mode per color; rebuilds only when games change ---
+	let allModeMapsByColor = $derived.by(() => {
+		const result: Partial<Record<'white' | 'black', Record<string, FrequencyMaps>>> = {};
+		for (const color of ['white', 'black'] as const) {
+			const processed = processedGamesByColor[color];
+			if (processed) result[color] = buildAllModeFrequencyMaps(processed, color);
+		}
+		return result;
 	});
+
+	// --- Active frequency maps: instant lookup, no computation ---
+	let frequencyMaps = $derived(
+		allModeMapsByColor[playerColor]?.[selectedMode ?? 'all'] ?? null
+	);
 
 	// moveHistory is the single source of truth; board state is fully derived from it.
 	let moveHistory = $state<string[]>([]);
@@ -77,7 +89,7 @@
 	async function search(): Promise<void> {
 		if (!username.trim()) return;
 		profile = null;
-		gamesByColor = {};
+		processedGamesByColor = {};
 		selectedMode = null;
 		moveHistory = [];
 		errorMessage = '';
@@ -87,10 +99,15 @@
 		const encodedUsername = encodeURIComponent(username);
 
 		loading = true;
+		loadingElapsed = 0;
+		const startTime = Date.now();
+		const elapsedTimer = setInterval(() => { loadingElapsed = (Date.now() - startTime) / 1000; }, 100);
+
 		try {
 			const makeGamesParams = (color: 'white' | 'black') =>
 				new URLSearchParams({ username, color, max: String(maxGames) });
 
+			loadingStatus = 'Fetching games…';
 			const [whiteResponse, blackResponse, profileResponse] = await Promise.all([
 				fetch(`${gamesApiPath}?${makeGamesParams('white')}`),
 				fetch(`${gamesApiPath}?${makeGamesParams('black')}`),
@@ -108,7 +125,13 @@
 				whiteResponse.json() as Promise<{ games: Game[] }>,
 				blackResponse.json() as Promise<{ games: Game[] }>,
 			]);
-			gamesByColor = { white: whiteGames, black: blackGames };
+
+			loadingStatus = 'Building move tree…';
+			const [white, black] = await Promise.all([
+				processGames(whiteGames),
+				processGames(blackGames),
+			]);
+			processedGamesByColor = { white, black };
 
 			if (profileResponse.ok) {
 				profile = await profileResponse.json() as Profile;
@@ -116,12 +139,14 @@
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Something went wrong';
 		} finally {
+			clearInterval(elapsedTimer);
 			loading = false;
+			loadingStatus = '';
 		}
 	}
 
 	function resetExplorer(): void {
-		gamesByColor = {};
+		processedGamesByColor = {};
 		moveHistory = [];
 		profile = null;
 		selectedMode = null;
@@ -216,6 +241,12 @@
 					</div>
 				</form>
 
+				{#if loading}
+					<p class="text-xs text-base-content/50 mt-1">
+						{loadingStatus} · {loadingElapsed.toFixed(1)}s
+					</p>
+				{/if}
+
 				</div>
 		</div>
 
@@ -276,7 +307,7 @@
 		{/if}
 
 		<!-- Explorer -->
-		{#if gamesByColor[playerColor]}
+		{#if processedGamesByColor[playerColor]}
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
 				<!-- Board + navigation -->

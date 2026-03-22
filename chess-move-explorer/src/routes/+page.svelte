@@ -320,32 +320,33 @@
 								{moveHistory.join(' ')}
 							</p>
 						{/if}
-
-						<div class="flex gap-2">
-							<button
-								class="btn btn-sm btn-ghost"
-								onclick={stepBack}
-								disabled={moveHistory.length === 0}
-							>
-								← Back
-							</button>
-							<button
-								class="btn btn-sm btn-ghost"
-								onclick={reset}
-								disabled={moveHistory.length === 0}
-							>
-								Reset
-							</button>
-						</div>
 					</div>
 				</div>
 
 				<!-- Move list -->
 				<div class="card bg-base-100 shadow">
 					<div class="card-body">
-						<h2 class="card-title text-base">
-							{isPlayerTurn ? 'Your moves from here' : "Opponent's moves from here"}
-						</h2>
+						<div class="flex items-center justify-between mb-1">
+							<h2 class="card-title text-base">
+								{isPlayerTurn ? 'Your moves from here' : "Opponent's moves from here"}
+							</h2>
+							<div class="flex gap-2">
+								<button
+									class="btn btn-sm btn-ghost"
+									onclick={stepBack}
+									disabled={moveHistory.length === 0}
+								>
+									← Back
+								</button>
+								<button
+									class="btn btn-sm btn-ghost"
+									onclick={reset}
+									disabled={moveHistory.length === 0}
+								>
+									Reset
+								</button>
+							</div>
+						</div>
 						<MoveList
 							moves={positionData.moves}
 							totalGames={positionData.totalGames}

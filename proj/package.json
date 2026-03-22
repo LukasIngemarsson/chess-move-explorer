@@ -24,6 +24,8 @@
 		"@opencode-ai/plugin": "^1.2.27",
 		"@supabase/supabase-js": "^2.99.3",
 		"@tailwindcss/vite": "^4.2.2",
+		"chess.js": "^1.4.0",
+		"chessground": "^9.2.1",
 		"daisyui": "^5.5.19",
 		"tailwindcss": "^4.2.2"
 	}

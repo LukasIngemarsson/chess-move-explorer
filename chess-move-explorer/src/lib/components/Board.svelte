@@ -42,7 +42,12 @@
 				movable: { free: false, color: undefined },
 				draggable: { enabled: false },
 				selectable: { enabled: false },
-				drawable: { brushes: [HOVER_BRUSH], autoShapes: toAutoShapes(latestBoardProps.hoverSquares) },
+				drawable: {
+					enabled: true,
+					visible: true,
+					brushes: [HOVER_BRUSH],
+					autoShapes: toAutoShapes(latestBoardProps.hoverSquares),
+				},
 			});
 		});
 
@@ -53,8 +58,8 @@
 					fen: newBoardProps.fen,
 					orientation: newBoardProps.orientation,
 					lastMove: toChessgroundKeys(newBoardProps.lastMove),
-					drawable: { autoShapes: toAutoShapes(newBoardProps.hoverSquares) },
 				});
+				chessgroundInstance?.setAutoShapes(toAutoShapes(newBoardProps.hoverSquares));
 			},
 			destroy() {
 				chessgroundInstance?.destroy();

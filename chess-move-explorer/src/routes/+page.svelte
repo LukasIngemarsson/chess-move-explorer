@@ -164,7 +164,7 @@
 					</div>
 
 					<input
-						class="input input-bordered input-sm flex-1 min-w-48"
+						class="input input-bordered input-sm w-44"
 						type="text"
 						placeholder="{platform === 'lichess' ? 'Lichess' : 'Chess.com'} username"
 						bind:value={username}
@@ -188,7 +188,7 @@
 						</button>
 					</div>
 
-					<button class="btn btn-sm btn-primary" type="submit" disabled={loading || !username.trim()}>
+					<button class="btn btn-sm btn-primary w-24" type="submit" disabled={loading || !username.trim()}>
 						{#if loading}
 							<span class="loading loading-spinner loading-xs"></span>
 							Loading…

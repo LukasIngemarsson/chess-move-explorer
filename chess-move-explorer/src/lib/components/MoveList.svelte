@@ -6,9 +6,10 @@
 		totalGames: number;
 		onSelect: (algebraicNotation: string) => void;
 		updating?: boolean;
+		progress?: number;
 	}
 
-	let { moves, totalGames, onSelect, updating = false }: Props = $props();
+	let { moves, totalGames, onSelect, updating = false, progress = 0 }: Props = $props();
 </script>
 
 <div class="flex flex-col gap-1">
@@ -16,6 +17,7 @@
 		{totalGames} game{totalGames !== 1 ? 's' : ''} from this position
 		{#if updating}
 			<span class="loading loading-spinner loading-xs"></span>
+			<span class="tabular-nums">{progress}%</span>
 		{/if}
 	</p>
 

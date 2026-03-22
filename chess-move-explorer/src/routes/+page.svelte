@@ -28,6 +28,7 @@
 	let loading = $state(false);
 	let loadingStatus = $state('');
 	let loadingElapsed = $state(0);
+	let loadingProgress = $state(0);
 	let errorMessage = $state('');
 
 	// --- Profile state ---
@@ -127,11 +128,19 @@
 			]);
 
 			loadingStatus = 'Building move tree…';
+			loadingProgress = 0;
+			const total = whiteGames.length + blackGames.length;
+			let whiteProcessed = 0;
+			let blackProcessed = 0;
 			const [white, black] = await Promise.all([
 				processGames(whiteGames, (partial) => {
+					whiteProcessed = partial.length;
+					loadingProgress = Math.round((whiteProcessed + blackProcessed) / total * 100);
 					processedGamesByColor = { ...processedGamesByColor, white: partial };
 				}),
 				processGames(blackGames, (partial) => {
+					blackProcessed = partial.length;
+					loadingProgress = Math.round((whiteProcessed + blackProcessed) / total * 100);
 					processedGamesByColor = { ...processedGamesByColor, black: partial };
 				}),
 			]);
@@ -356,6 +365,7 @@
 							totalGames={positionData.totalGames}
 							onSelect={playMove}
 							updating={loading}
+							progress={loadingProgress}
 						/>
 					</div>
 				</div>

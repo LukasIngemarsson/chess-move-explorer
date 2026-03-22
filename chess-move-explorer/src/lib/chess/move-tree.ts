@@ -65,12 +65,19 @@ export async function processGames(
 ): Promise<ProcessedGame[]> {
 	// Yield to the browser at frame boundaries (every ~10 ms of work) so
 	// the UI (e.g. a loading spinner) keeps painting smoothly.
+	// onProgress is throttled to every 500ms to avoid expensive $derived recomputation on each frame.
 	const FRAME_BUDGET_MS = 10;
+	const PROGRESS_INTERVAL_MS = 500;
 	const result: ProcessedGame[] = [];
 	let frameStart = performance.now();
+	let lastProgressAt = -Infinity;
 	for (let i = 0; i < games.length; i++) {
 		if (performance.now() - frameStart > FRAME_BUDGET_MS) {
-			onProgress?.(result);
+			const now = performance.now();
+			if (onProgress && now - lastProgressAt >= PROGRESS_INTERVAL_MS) {
+				onProgress(result);
+				lastProgressAt = now;
+			}
 			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 			frameStart = performance.now();
 		}

@@ -167,50 +167,56 @@
 				</p>
 
 				<form
-					class="flex flex-wrap gap-3 mt-2 justify-center"
+					class="flex flex-col items-center gap-2 mt-2"
 					onsubmit={(e) => { e.preventDefault(); search(); }}
 				>
-					<!-- Platform toggle -->
-					<div class="join">
-						<button
-							type="button"
-							class="join-item btn btn-sm {platform === 'lichess' ? 'btn-primary' : ''}"
-							onclick={() => { platform = 'lichess'; resetExplorer(); }}
-						>
-							Lichess
-						</button>
-						<button
-							type="button"
-							class="join-item btn btn-sm {platform === 'chess-com' ? 'btn-primary' : ''}"
-							onclick={() => { platform = 'chess-com'; resetExplorer(); }}
-						>
-							Chess.com
+					<div class="flex flex-wrap gap-3 justify-center">
+						<!-- Platform toggle -->
+						<div class="join">
+							<button
+								type="button"
+								class="join-item btn btn-sm {platform === 'lichess' ? 'btn-primary' : ''}"
+								onclick={() => { platform = 'lichess'; resetExplorer(); }}
+							>
+								Lichess
+							</button>
+							<button
+								type="button"
+								class="join-item btn btn-sm {platform === 'chess-com' ? 'btn-primary' : ''}"
+								onclick={() => { platform = 'chess-com'; resetExplorer(); }}
+							>
+								Chess.com
+							</button>
+						</div>
+
+						<input
+							class="input input-bordered input-sm w-64"
+							type="text"
+							placeholder="{platform === 'lichess' ? 'Lichess' : 'Chess.com'} username"
+							bind:value={username}
+						/>
+
+						<button class="btn btn-sm btn-primary w-24" type="submit" disabled={loading || !username.trim()}>
+							{#if loading}
+								<span class="loading loading-spinner loading-xs"></span>
+								Loading…
+							{:else}
+								Analyze
+							{/if}
 						</button>
 					</div>
 
-					<input
-						class="input input-bordered input-sm w-64"
-						type="text"
-						placeholder="{platform === 'lichess' ? 'Lichess' : 'Chess.com'} username"
-						bind:value={username}
-					/>
-
-					<select class="select select-bordered select-sm" bind:value={maxGames}>
-						<option value={100}>100 games</option>
-						<option value={200}>200 games</option>
-						<option value={500}>500 games</option>
-						<option value={1000}>1 000 games</option>
-						<option value={2000}>2 000 games</option>
-						<option value={0}>All games</option>
-					</select>
-					<button class="btn btn-sm btn-primary w-24" type="submit" disabled={loading || !username.trim()}>
-						{#if loading}
-							<span class="loading loading-spinner loading-xs"></span>
-							Loading…
-						{:else}
-							Analyze
-						{/if}
-					</button>
+					<div class="flex items-center gap-2">
+						<span class="text-xs text-base-content/50">Load up to</span>
+						<select class="select select-bordered select-xs" bind:value={maxGames}>
+							<option value={100}>100 games</option>
+							<option value={200}>200 games</option>
+							<option value={500}>500 games</option>
+							<option value={1000}>1 000 games</option>
+							<option value={2000}>2 000 games</option>
+							<option value={0}>All games</option>
+						</select>
+					</div>
 				</form>
 
 				</div>

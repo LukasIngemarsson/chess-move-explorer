@@ -263,17 +263,17 @@
 					<a href={profileUrl} target="_blank" rel="noopener noreferrer" class="font-semibold link link-hover">
 						{profile.username}
 					</a>
-					<div class="join">
+					<div class="flex gap-1">
 						<button
 							type="button"
-							class="join-item btn btn-xs {playerColor === 'white' ? 'btn-primary' : ''}"
+							class="badge cursor-pointer {playerColor === 'white' ? 'badge-primary' : 'badge-ghost'}"
 							onclick={() => selectColor('white')}
 						>
 							White
 						</button>
 						<button
 							type="button"
-							class="join-item btn btn-xs {playerColor === 'black' ? 'btn-primary' : ''}"
+							class="badge cursor-pointer {playerColor === 'black' ? 'badge-primary' : 'badge-ghost'}"
 							onclick={() => selectColor('black')}
 						>
 							Black

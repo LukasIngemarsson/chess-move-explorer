@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { Chess } from 'chess.js';
 	import Board from '$lib/components/Board.svelte';
 	import MoveList from '$lib/components/MoveList.svelte';
@@ -67,6 +68,7 @@
 
 	// moveHistory is the single source of truth; board state is fully derived from it.
 	let moveHistory = $state<string[]>([]);
+	let moveLogEl = $state<HTMLElement | null>(null);
 
 	// --- Derived board state ---
 	let boardState = $derived.by(() => {
@@ -81,6 +83,18 @@
 	});
 
 	let isPlayerTurn = $derived(playerColor === boardState.sideToMove);
+
+	let hoveredMove = $state<string | null>(null);
+	let hoveredSquares = $derived.by((): [string, string] | undefined => {
+		if (!hoveredMove) return undefined;
+		try {
+			const chess = new Chess(boardState.fen);
+			const result = chess.move(hoveredMove);
+			return [result.from, result.to];
+		} catch {
+			return undefined;
+		}
+	});
 
 	let positionData = $derived.by<PositionData>(() => {
 		if (!frequencyMaps) return { moves: [], totalGames: 0 };
@@ -194,8 +208,10 @@
 		selectedMode = null;
 	}
 
-	function playMove(algebraicNotation: string): void {
+	async function playMove(algebraicNotation: string): Promise<void> {
 		moveHistory = [...moveHistory, algebraicNotation];
+		await tick();
+		if (moveLogEl) moveLogEl.scrollTop = moveLogEl.scrollHeight;
 	}
 
 	function stepBack(): void {
@@ -350,7 +366,7 @@
 				<!-- Board + navigation -->
 				<div class="card bg-base-100 shadow" bind:clientHeight={boardCardHeight}>
 					<div class="card-body">
-						<Board fen={boardState.fen} {orientation} lastMove={boardState.lastMovedSquares} />
+						<Board fen={boardState.fen} {orientation} lastMove={boardState.lastMovedSquares} hoverSquares={hoveredSquares} />
 					</div>
 				</div>
 
@@ -383,14 +399,29 @@
 								moves={positionData.moves}
 								totalGames={positionData.totalGames}
 								onSelect={playMove}
+								onHover={(m) => { hoveredMove = m; }}
 								updating={loading}
 								progress={loadingProgress}
 							/>
 						</div>
+						{#if moveHistory.length > 0}
+							<div bind:this={moveLogEl} class="flex flex-wrap items-baseline gap-x-1 gap-y-1 font-mono text-sm text-base-content/70 pt-2 border-t border-base-200 max-h-20 overflow-y-auto">
+								{#each moveHistory as move, i}
+									{#if i % 2 === 0}
+										<span class="text-base-content/40 select-none">{Math.floor(i / 2) + 1}.</span>
+									{/if}
+									<button
+										class="hover:text-base-content transition-colors {i === moveHistory.length - 1 ? 'text-base-content font-semibold' : ''}"
+										onclick={() => { moveHistory = moveHistory.slice(0, i + 1); }}
+									>{move}</button>
+								{/each}
+							</div>
+						{/if}
 					</div>
 				</div>
 
 			</div>
+
 		{/if}
 
 	</div>

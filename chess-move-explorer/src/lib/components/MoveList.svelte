@@ -5,14 +5,20 @@
 		moves: MoveFrequency[];
 		totalGames: number;
 		onSelect: (algebraicNotation: string) => void;
+		updating?: boolean;
+		progress?: number;
 	}
 
-	let { moves, totalGames, onSelect }: Props = $props();
+	let { moves, totalGames, onSelect, updating = false, progress = 0 }: Props = $props();
 </script>
 
 <div class="flex flex-col gap-1">
-	<p class="text-sm text-base-content/60 mb-2">
+	<p class="text-sm text-base-content/60 mb-2 flex items-center gap-2">
 		{totalGames} game{totalGames !== 1 ? 's' : ''} from this position
+		{#if updating}
+			<span class="loading loading-spinner loading-xs"></span>
+			<span class="tabular-nums">{progress}%</span>
+		{/if}
 	</p>
 
 	{#each moves as move}

@@ -59,16 +59,29 @@ interface MoveStats {
  * Yields to the main thread every CHUNK_SIZE games so the browser can
  * keep painting (e.g. a loading spinner) during the heavy computation.
  */
-export async function processGames(games: Game[]): Promise<ProcessedGame[]> {
+export async function processGames(
+	games: Game[],
+	onProgress?: (partial: ProcessedGame[]) => void
+): Promise<ProcessedGame[]> {
 	// Yield to the browser at frame boundaries (every ~10 ms of work) so
 	// the UI (e.g. a loading spinner) keeps painting smoothly.
+	// onProgress fires at evenly-spaced checkpoints (25%, 50%, 75% of total games,
+	// minimum 50 games) — few enough that the $derived rebuild cost is negligible,
+	// deferred via setTimeout so the current frame paints cleanly first.
 	const FRAME_BUDGET_MS = 10;
+	const CHECKPOINTS = [0.25, 0.5, 0.75].map((f) => Math.max(50, Math.floor(games.length * f)));
+	let nextCheckpoint = 0;
 	const result: ProcessedGame[] = [];
 	let frameStart = performance.now();
 	for (let i = 0; i < games.length; i++) {
 		if (performance.now() - frameStart > FRAME_BUDGET_MS) {
 			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 			frameStart = performance.now();
+			if (onProgress && nextCheckpoint < CHECKPOINTS.length && result.length >= CHECKPOINTS[nextCheckpoint]) {
+				nextCheckpoint++;
+				// Defer to a macrotask so the current frame paints cleanly first.
+				setTimeout(() => onProgress(result), 0);
+			}
 		}
 		const game = games[i];
 		const chess = new Chess();
@@ -91,22 +104,34 @@ export async function processGames(games: Game[]): Promise<ProcessedGame[]> {
 	return result;
 }
 
+/** Cancellation token for async builds. */
+export interface BuildSignal { cancelled: boolean }
+
 /**
  * Build frequency maps for every mode (and 'all') in a single pass over the
  * processed games. Returns a record keyed by mode string plus the key 'all'.
- * No chess.js calls — only Map operations.
+ * Async with rAF yields so it never blocks the main thread.
  */
-export function buildAllModeFrequencyMaps(
+export async function buildAllModeFrequencyMaps(
 	processedGames: ProcessedGame[],
-	playerColor: 'white' | 'black'
-): Record<string, FrequencyMaps> {
+	playerColor: 'white' | 'black',
+	signal?: BuildSignal
+): Promise<Record<string, FrequencyMaps> | null> {
 	type CountsMap = Map<string, Map<string, MoveStats>>;
 
+	const FRAME_BUDGET_MS = 10;
 	const allPlayer: CountsMap = new Map();
 	const allOpponent: CountsMap = new Map();
 	const byMode: Record<string, { player: CountsMap; opponent: CountsMap }> = {};
 
+	let frameStart = performance.now();
 	for (const game of processedGames) {
+		if (performance.now() - frameStart > FRAME_BUDGET_MS) {
+			if (signal?.cancelled) return null;
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+			frameStart = performance.now();
+		}
+
 		if (!byMode[game.mode]) {
 			byMode[game.mode] = { player: new Map(), opponent: new Map() };
 		}
@@ -138,6 +163,8 @@ export function buildAllModeFrequencyMaps(
 			}
 		}
 	}
+
+	if (signal?.cancelled) return null;
 
 	const result: Record<string, FrequencyMaps> = {
 		all: { player: toPositionData(allPlayer), opponent: toPositionData(allOpponent) },

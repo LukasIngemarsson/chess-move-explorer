@@ -6,6 +6,7 @@
 		processGames,
 		buildAllModeFrequencyMaps,
 		normalizeFenForLookup,
+		type BuildSignal,
 		type Game,
 		type ProcessedGame,
 		type FrequencyMaps,
@@ -21,13 +22,15 @@
 
 	// --- Form state ---
 	let username = $state('');
-	let platform = $state<Platform>('lichess');
+	let platform = $state<Platform>('chess-com');
 	let playerColor = $state<'white' | 'black'>('white');
 	// 0 = all games
 	let maxGames = $state(500);
 	let loading = $state(false);
 	let loadingStatus = $state('');
 	let loadingElapsed = $state(0);
+	let loadingProgress = $state(0);
+	let boardCardHeight = $state(0);
 	let errorMessage = $state('');
 
 	// --- Profile state ---
@@ -37,15 +40,25 @@
 	// --- Processed games cache: chess.js runs once on load, results stored here ---
 	let processedGamesByColor = $state<Partial<Record<'white' | 'black', ProcessedGame[]>>>({});
 
-	// --- Pre-computed maps for every mode per color; rebuilds only when games change ---
-	let allModeMapsByColor = $derived.by(() => {
-		const result: Partial<Record<'white' | 'black', Record<string, FrequencyMaps>>> = {};
+	// --- Pre-computed maps for every mode per color; rebuilt async to avoid blocking the main thread ---
+	let allModeMapsByColor = $state<Partial<Record<'white' | 'black', Record<string, FrequencyMaps>>>>({});
+	let _buildSignal: BuildSignal = { cancelled: false };
+
+	async function rebuildMaps(games: Partial<Record<'white' | 'black', ProcessedGame[]>>) {
+		_buildSignal.cancelled = true;
+		const signal = (_buildSignal = { cancelled: false });
+		const result: typeof allModeMapsByColor = {};
 		for (const color of ['white', 'black'] as const) {
-			const processed = processedGamesByColor[color];
-			if (processed) result[color] = buildAllModeFrequencyMaps(processed, color);
+			const processed = games[color];
+			if (processed?.length) {
+				const maps = await buildAllModeFrequencyMaps(processed, color, signal);
+				if (signal.cancelled) return;
+				result[color] = maps!;
+			}
 		}
-		return result;
-	});
+		allModeMapsByColor = result;
+	}
+
 
 	// --- Active frequency maps: instant lookup, no computation ---
 	let frequencyMaps = $derived(
@@ -121,21 +134,37 @@
 				throw new Error(body.message ?? `Error ${primaryResponse.status}`);
 			}
 
+			// Profile response is already buffered — parse now so the card appears before game processing.
+			if (profileResponse.ok) {
+				profile = await profileResponse.json() as Profile;
+			}
+
 			const [{ games: whiteGames }, { games: blackGames }] = await Promise.all([
 				whiteResponse.json() as Promise<{ games: Game[] }>,
 				blackResponse.json() as Promise<{ games: Game[] }>,
 			]);
 
 			loadingStatus = 'Building move tree…';
+			loadingProgress = 0;
+			const total = whiteGames.length + blackGames.length;
+			let whiteProcessed = 0;
+			let blackProcessed = 0;
 			const [white, black] = await Promise.all([
-				processGames(whiteGames),
-				processGames(blackGames),
+				processGames(whiteGames, (partial) => {
+					whiteProcessed = partial.length;
+					loadingProgress = Math.round((whiteProcessed + blackProcessed) / total * 100);
+					processedGamesByColor = { ...processedGamesByColor, white: partial };
+					rebuildMaps(processedGamesByColor);
+				}),
+				processGames(blackGames, (partial) => {
+					blackProcessed = partial.length;
+					loadingProgress = Math.round((whiteProcessed + blackProcessed) / total * 100);
+					processedGamesByColor = { ...processedGamesByColor, black: partial };
+					rebuildMaps(processedGamesByColor);
+				}),
 			]);
 			processedGamesByColor = { white, black };
-
-			if (profileResponse.ok) {
-				profile = await profileResponse.json() as Profile;
-			}
+			rebuildMaps(processedGamesByColor);
 		} catch (err) {
 			errorMessage = err instanceof Error ? err.message : 'Something went wrong';
 		} finally {
@@ -146,7 +175,9 @@
 	}
 
 	function resetExplorer(): void {
+		_buildSignal.cancelled = true;
 		processedGamesByColor = {};
+		allModeMapsByColor = {};
 		moveHistory = [];
 		profile = null;
 		selectedMode = null;
@@ -254,6 +285,12 @@
 			<div class="alert alert-error shadow">
 				<span>{errorMessage}</span>
 			</div>
+
+			{#if moveHistory.length > 0}
+				<p class="text-sm font-mono text-base-content/60 break-all">
+					{moveHistory.join(' ')}
+				</p>
+			{/if}
 		{/if}
 
 		<!-- Profile card -->
@@ -311,21 +348,15 @@
 			<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
 				<!-- Board + navigation -->
-				<div class="card bg-base-100 shadow">
-					<div class="card-body gap-4">
+				<div class="card bg-base-100 shadow" bind:clientHeight={boardCardHeight}>
+					<div class="card-body">
 						<Board fen={boardState.fen} {orientation} lastMove={boardState.lastMovedSquares} />
-
-						{#if moveHistory.length > 0}
-							<p class="text-sm font-mono text-base-content/60 break-all">
-								{moveHistory.join(' ')}
-							</p>
-						{/if}
 					</div>
 				</div>
 
 				<!-- Move list -->
-				<div class="card bg-base-100 shadow">
-					<div class="card-body">
+				<div class="card bg-base-100 shadow flex flex-col" style="max-height: {boardCardHeight}px">
+					<div class="card-body flex-1 flex flex-col overflow-hidden">
 						<div class="flex items-center justify-between mb-1">
 							<h2 class="card-title text-base">
 								{isPlayerTurn ? 'Your moves from here' : "Opponent's moves from here"}
@@ -347,11 +378,15 @@
 								</button>
 							</div>
 						</div>
-						<MoveList
-							moves={positionData.moves}
-							totalGames={positionData.totalGames}
-							onSelect={playMove}
-						/>
+						<div class="flex-1 min-h-0 overflow-y-auto">
+							<MoveList
+								moves={positionData.moves}
+								totalGames={positionData.totalGames}
+								onSelect={playMove}
+								updating={loading}
+								progress={loadingProgress}
+							/>
+						</div>
 					</div>
 				</div>
 

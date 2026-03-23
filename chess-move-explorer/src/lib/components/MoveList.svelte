@@ -8,9 +8,10 @@
 		onHover?: (algebraicNotation: string | null) => void;
 		updating?: boolean;
 		progress?: number;
+		repeatedMoves?: Set<string>;
 	}
 
-	let { moves, totalGames, onSelect, onHover, updating = false, progress = 0 }: Props = $props();
+	let { moves, totalGames, onSelect, onHover, updating = false, progress = 0, repeatedMoves }: Props = $props();
 </script>
 
 <div class="flex flex-col gap-1">
@@ -26,11 +27,17 @@
 		<button
 			class="grid w-full items-center gap-x-3 font-mono text-sm py-2 px-3 rounded-lg hover:bg-base-200 active:bg-base-300 cursor-pointer"
 			style="grid-template-columns: 3rem 3rem 1fr 3rem 3rem 3rem"
+			data-move={move.algebraicNotation}
 			onclick={() => onSelect(move.algebraicNotation)}
 			onmouseenter={() => onHover?.(move.algebraicNotation)}
 			onmouseleave={() => onHover?.(null)}
 		>
-			<span class="text-base font-semibold text-left">{move.algebraicNotation}</span>
+			<span class="text-base font-semibold text-left flex items-center gap-1">
+				{move.algebraicNotation}
+				{#if repeatedMoves?.has(move.algebraicNotation)}
+					<span class="text-base-content/40 text-lg" title="Repeats a position in the current line">↻</span>
+				{/if}
+			</span>
 
 			<span class="flex flex-col items-end">
 				<span class="text-primary/70">{move.count}×</span>

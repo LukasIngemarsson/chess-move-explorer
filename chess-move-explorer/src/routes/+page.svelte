@@ -73,13 +73,31 @@
 	// --- Derived board state ---
 	let boardState = $derived.by(() => {
 		const chessInstance = new Chess();
+		const seenFens = new Set([normalizeFenForLookup(chessInstance.fen())]);
 		let lastMovedSquares: [string, string] | undefined;
 		for (const moveNotation of moveHistory) {
 			const moveResult = chessInstance.move(moveNotation);
 			if (moveResult) lastMovedSquares = [moveResult.from, moveResult.to];
+			seenFens.add(normalizeFenForLookup(chessInstance.fen()));
 		}
 		const sideToMove: 'white' | 'black' = chessInstance.turn() === 'w' ? 'white' : 'black';
-		return { fen: chessInstance.fen(), lastMovedSquares, sideToMove };
+		return { fen: chessInstance.fen(), lastMovedSquares, sideToMove, seenFens };
+	});
+
+	// Moves that lead back to a position already in the current line.
+	let repeatedMoves = $derived.by(() => {
+		const chess = new Chess(boardState.fen);
+		const repeated = new Set<string>();
+		for (const { algebraicNotation } of positionData.moves) {
+			try {
+				chess.move(algebraicNotation);
+				if (boardState.seenFens.has(normalizeFenForLookup(chess.fen()))) {
+					repeated.add(algebraicNotation);
+				}
+				chess.undo();
+			} catch { /* skip invalid */ }
+		}
+		return repeated;
 	});
 
 	let isPlayerTurn = $derived(playerColor === boardState.sideToMove);
@@ -210,8 +228,10 @@
 
 	async function playMove(algebraicNotation: string): Promise<void> {
 		moveHistory = [...moveHistory, algebraicNotation];
+		hoveredMove = null;
 		await tick();
 		if (moveLogEl) moveLogEl.scrollTop = moveLogEl.scrollHeight;
+		hoveredMove = document.querySelector('[data-move]:hover')?.getAttribute('data-move') ?? null;
 	}
 
 	function stepBack(): void {
@@ -226,6 +246,7 @@
 <svelte:head>
 	<title>Chess Move Explorer</title>
 </svelte:head>
+
 
 <main class="min-h-screen bg-base-200 p-6">
 	<div class="max-w-5xl mx-auto flex flex-col gap-6">
@@ -402,6 +423,7 @@
 								onHover={(m) => { hoveredMove = m; }}
 								updating={loading}
 								progress={loadingProgress}
+								{repeatedMoves}
 							/>
 						</div>
 						{#if moveHistory.length > 0}

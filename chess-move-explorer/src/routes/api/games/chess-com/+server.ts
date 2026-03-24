@@ -1,6 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { error, json } from '@sveltejs/kit';
 import type { Game } from '$lib/chess/move-tree';
+import { PlayerColor } from '$lib/types';
 
 interface ChessComArchivesResponse {
 	archives: string[];
@@ -58,25 +59,25 @@ function extractMovesFromPgn(pgn: string): string {
 
 function computePlayerResult(
 	pgnResult: string,
-	playerColor: 'white' | 'black'
+	playerColor: PlayerColor
 ): 'win' | 'draw' | 'loss' | null {
 	if (pgnResult === '1/2-1/2') return 'draw';
-	if (pgnResult === '1-0') return playerColor === 'white' ? 'win' : 'loss';
-	if (pgnResult === '0-1') return playerColor === 'black' ? 'win' : 'loss';
+	if (pgnResult === '1-0') return playerColor === PlayerColor.White ? 'win' : 'loss';
+	if (pgnResult === '0-1') return playerColor === PlayerColor.Black ? 'win' : 'loss';
 	return null; // abandoned or unknown — skip
 }
 
 function normalizeGame(
 	game: ChessComGame,
 	username: string,
-	playerColor: 'white' | 'black'
+	playerColor: PlayerColor
 ): Game | null {
 	// Skip correspondence games — daily time control has very different preparation patterns.
 	if (game.time_class === 'daily') return null;
 
 	const headers = extractPgnHeaders(game.pgn);
 
-	const playerNameInGame = playerColor === 'white' ? headers['White'] : headers['Black'];
+	const playerNameInGame = playerColor === PlayerColor.White ? headers['White'] : headers['Black'];
 	if (playerNameInGame?.toLowerCase() !== username.toLowerCase()) return null;
 
 	const playerResult = computePlayerResult(headers['Result'] ?? '*', playerColor);
@@ -96,9 +97,9 @@ export const GET: RequestHandler = async ({ url }) => {
 	const rawColor = url.searchParams.get('color');
 
 	if (!username) error(400, 'username is required');
-	if (rawColor !== 'white' && rawColor !== 'black') error(400, 'color must be white or black');
+	if (rawColor !== PlayerColor.White && rawColor !== PlayerColor.Black) error(400, 'color must be white or black');
 
-	const playerColor = rawColor;
+	const playerColor = rawColor as PlayerColor;
 
 	const archivesResponse = await fetch(
 		`https://api.chess.com/pub/player/${encodeURIComponent(username)}/games/archives`,

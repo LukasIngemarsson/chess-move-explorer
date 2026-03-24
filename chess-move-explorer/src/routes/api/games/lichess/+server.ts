@@ -1,17 +1,18 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { error, json } from '@sveltejs/kit';
 import type { Game } from '$lib/chess/move-tree';
+import { PlayerColor } from '$lib/types';
 
 interface LichessGame {
 	variant: string;
 	perf: string;
 	moves: string;
-	winner?: 'white' | 'black';
+	winner?: PlayerColor;
 }
 
 function computePlayerResult(
-	winner: 'white' | 'black' | undefined,
-	playerColor: 'white' | 'black'
+	winner: PlayerColor | undefined,
+	playerColor: PlayerColor
 ): 'win' | 'draw' | 'loss' {
 	if (!winner) return 'draw';
 	return winner === playerColor ? 'win' : 'loss';
@@ -25,9 +26,9 @@ export const GET: RequestHandler = async ({ url }) => {
 	const rawColor = url.searchParams.get('color');
 
 	if (!username) error(400, 'username is required');
-	if (rawColor !== 'white' && rawColor !== 'black') error(400, 'color must be white or black');
+	if (rawColor !== PlayerColor.White && rawColor !== PlayerColor.Black) error(400, 'color must be white or black');
 
-	const playerColor = rawColor;
+	const playerColor = rawColor as PlayerColor;
 
 	const params = new URLSearchParams({
 		max: String(max),

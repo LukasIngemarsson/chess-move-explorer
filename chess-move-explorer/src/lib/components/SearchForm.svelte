@@ -1,8 +1,15 @@
 <script lang="ts">
-	import type { Platform } from '$lib/types';
+	import { Platform } from '$lib/types';
+	import type { Platform as PlatformT } from '$lib/types';
+	import ToggleGroup from './ToggleGroup.svelte';
+
+	const platformOptions = [
+		{ value: Platform.Lichess, label: 'Lichess' },
+		{ value: Platform.ChessCom, label: 'Chess.com' },
+	];
 
 	interface Props {
-		platform: Platform;
+		platform: PlatformT;
 		username: string;
 		maxGames: number;
 		loading: boolean;
@@ -35,27 +42,12 @@
 			class="flex flex-wrap gap-3 mt-2 justify-center"
 			onsubmit={(e) => { e.preventDefault(); onSearch(); }}
 		>
-			<div class="join">
-				<button
-					type="button"
-					class="join-item btn btn-sm {platform === 'lichess' ? 'btn-primary' : ''}"
-					onclick={() => { platform = 'lichess'; onPlatformChange(); }}
-				>
-					Lichess
-				</button>
-				<button
-					type="button"
-					class="join-item btn btn-sm {platform === 'chess-com' ? 'btn-primary' : ''}"
-					onclick={() => { platform = 'chess-com'; onPlatformChange(); }}
-				>
-					Chess.com
-				</button>
-			</div>
+			<ToggleGroup options={platformOptions} bind:value={platform} variant="btn" onChange={() => onPlatformChange()} />
 
 			<input
 				class="input input-bordered input-sm w-64"
 				type="text"
-				placeholder="{platform === 'lichess' ? 'Lichess' : 'Chess.com'} username"
+				placeholder="{platform === Platform.Lichess ? 'Lichess' : 'Chess.com'} username"
 				bind:value={username}
 			/>
 

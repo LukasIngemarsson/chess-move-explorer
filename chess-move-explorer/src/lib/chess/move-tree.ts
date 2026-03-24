@@ -1,4 +1,5 @@
 import { Chess } from 'chess.js';
+import { PlayerColor } from '$lib/types';
 
 export interface MoveFrequency {
 	algebraicNotation: string;
@@ -114,7 +115,7 @@ export interface BuildSignal { cancelled: boolean }
  */
 export async function buildAllModeFrequencyMaps(
 	processedGames: ProcessedGame[],
-	playerColor: 'white' | 'black',
+	playerColor: PlayerColor,
 	signal?: BuildSignal
 ): Promise<Record<string, FrequencyMaps> | null> {
 	type CountsMap = Map<string, Map<string, MoveStats>>;
@@ -140,8 +141,8 @@ export async function buildAllModeFrequencyMaps(
 
 		for (let i = 0; i < game.moves.length; i++) {
 			const isPlayerMove =
-				(playerColor === 'white' && i % 2 === 0) ||
-				(playerColor === 'black' && i % 2 === 1);
+				(playerColor === PlayerColor.White && i % 2 === 0) ||
+				(playerColor === PlayerColor.Black && i % 2 === 1);
 
 			const fen = game.positions[i];
 			const move = game.moves[i];

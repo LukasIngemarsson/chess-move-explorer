@@ -49,6 +49,7 @@
 				type="text"
 				placeholder="{platform === Platform.Lichess ? 'Lichess' : 'Chess.com'} username"
 				bind:value={username}
+				onkeydown={(e) => { if (e.key === 'Enter' && !loading && username.trim()) { e.preventDefault(); onSearch(); } }}
 			/>
 
 			<div class="join">

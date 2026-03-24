@@ -1,5 +1,6 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { error, json } from '@sveltejs/kit';
+import type { Profile } from '$lib/types';
 
 interface ChessComStats {
 	chess_bullet?: { last: { rating: number } };
@@ -7,10 +8,6 @@ interface ChessComStats {
 	chess_rapid?: { last: { rating: number } };
 }
 
-export interface ChessComProfile {
-	username: string;
-	ratings: { mode: string; rating: number | null }[];
-}
 
 const REQUEST_HEADERS = {
 	'User-Agent': 'chess-move-explorer (github.com/LukasIngemarsson/chess-move-explorer)',
@@ -38,6 +35,6 @@ export const GET: RequestHandler = async ({ url }) => {
 		{ mode: 'rapid', rating: stats.chess_rapid?.last.rating ?? null },
 	];
 
-	const profile: ChessComProfile = { username, ratings };
+	const profile: Profile = { username, ratings };
 	return json(profile);
 };

@@ -1,5 +1,6 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { error, json } from '@sveltejs/kit';
+import type { Profile } from '$lib/types';
 
 interface LichessUser {
 	id: string;
@@ -7,10 +8,6 @@ interface LichessUser {
 	perfs: Partial<Record<string, { rating: number; games: number }>>;
 }
 
-export interface LichessProfile {
-	username: string;
-	ratings: { mode: string; rating: number | null }[];
-}
 
 const DISPLAYED_MODES = ['bullet', 'blitz', 'rapid', 'classical'] as const;
 
@@ -30,6 +27,6 @@ export const GET: RequestHandler = async ({ url }) => {
 	const ratings = DISPLAYED_MODES
 		.map((mode) => ({ mode, rating: user.perfs[mode]?.rating ?? null }));
 
-	const profile: LichessProfile = { username: user.username, ratings };
+	const profile: Profile = { username: user.username, ratings };
 	return json(profile);
 };

@@ -1,22 +1,24 @@
 <script lang="ts">
 	import type { Api as ChessgroundApi } from 'chessground/api';
 	import type { Key } from 'chessground/types';
+	import { PlayerColor } from '$lib/types';
+	import type { PlayerColor as PlayerColorT } from '$lib/types';
 
 	interface BoardProps {
 		fen: string;
-		orientation: 'white' | 'black';
+		orientation: PlayerColorT;
 		lastMove?: [string, string];
 		hoverSquares?: [string, string];
 	}
 
 	interface Props {
 		fen: string;
-		orientation?: 'white' | 'black';
+		orientation?: PlayerColorT;
 		lastMove?: [string, string];
 		hoverSquares?: [string, string];
 	}
 
-	let { fen, orientation = 'white', lastMove, hoverSquares }: Props = $props();
+	let { fen, orientation = PlayerColor.White, lastMove, hoverSquares }: Props = $props();
 
 	function toChessgroundKeys(squares: [string, string] | undefined): [Key, Key] | undefined {
 		return squares ? [squares[0] as Key, squares[1] as Key] : undefined;

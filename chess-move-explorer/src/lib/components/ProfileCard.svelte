@@ -1,12 +1,19 @@
 <script lang="ts">
-	import type { Profile } from '$lib/types';
+	import { PlayerColor } from '$lib/types';
+	import type { PlayerColor as PlayerColorT, Profile } from '$lib/types';
+	import ToggleGroup from './ToggleGroup.svelte';
+
+	const colorOptions = [
+		{ value: PlayerColor.White, label: 'White' },
+		{ value: PlayerColor.Black, label: 'Black' },
+	];
 
 	interface Props {
 		profile: Profile;
 		profileUrl: string | null;
-		playerColor: 'white' | 'black';
+		playerColor: PlayerColorT;
 		selectedMode: string | null;
-		onSelectColor: (color: 'white' | 'black') => void;
+		onSelectColor: (color: PlayerColorT) => void;
 		onSelectMode: (mode: string) => void;
 	}
 
@@ -18,22 +25,7 @@
 		<a href={profileUrl} target="_blank" rel="noopener noreferrer" class="font-semibold link link-hover">
 			{profile.username}
 		</a>
-		<div class="flex gap-1">
-			<button
-				type="button"
-				class="badge cursor-pointer {playerColor === 'white' ? 'badge-primary' : 'badge-ghost'}"
-				onclick={() => onSelectColor('white')}
-			>
-				White
-			</button>
-			<button
-				type="button"
-				class="badge cursor-pointer {playerColor === 'black' ? 'badge-primary' : 'badge-ghost'}"
-				onclick={() => onSelectColor('black')}
-			>
-				Black
-			</button>
-		</div>
+		<ToggleGroup options={colorOptions} value={playerColor} onChange={(v) => onSelectColor(v as PlayerColorT)} />
 		<div class="flex flex-wrap gap-2">
 			{#each profile.ratings as { mode, rating }}
 				{#if rating !== null}

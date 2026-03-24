@@ -16,12 +16,12 @@
 		type FrequencyMaps,
 		type PositionData,
 	} from '$lib/chess/move-tree';
-	import type { Platform, Profile } from '$lib/types';
+	import { Platform, PlayerColor, type Profile } from '$lib/types';
 
 	// --- Form state ---
 	let username = $state('');
-	let platform = $state<Platform>('chess-com');
-	let playerColor = $state<'white' | 'black'>('white');
+	let platform = $state<Platform>(Platform.ChessCom);
+	let playerColor = $state<PlayerColor>(PlayerColor.White);
 	let maxGames = $state(500); // 0 = all games
 	let loading = $state(false);
 	let loadingStatus = $state('');
@@ -35,17 +35,17 @@
 	let selectedMode = $state<string | null>(null);
 
 	// --- Processed games cache: chess.js runs once on load, results stored here ---
-	let processedGamesByColor = $state<Partial<Record<'white' | 'black', ProcessedGame[]>>>({});
+	let processedGamesByColor = $state<Partial<Record<PlayerColor, ProcessedGame[]>>>({});
 
 	// --- Pre-computed maps for every mode per color; rebuilt async to avoid blocking the main thread ---
-	let allModeMapsByColor = $state<Partial<Record<'white' | 'black', Record<string, FrequencyMaps>>>>({});
+	let allModeMapsByColor = $state<Partial<Record<PlayerColor, Record<string, FrequencyMaps>>>>({});
 	let _buildSignal: BuildSignal = { cancelled: false };
 
-	async function rebuildMaps(games: Partial<Record<'white' | 'black', ProcessedGame[]>>) {
+	async function rebuildMaps(games: Partial<Record<PlayerColor, ProcessedGame[]>>) {
 		_buildSignal.cancelled = true;
 		const signal = (_buildSignal = { cancelled: false });
 		const result: typeof allModeMapsByColor = {};
-		for (const color of ['white', 'black'] as const) {
+		for (const color of [PlayerColor.White, PlayerColor.Black]) {
 			const processed = games[color];
 			if (processed?.length) {
 				const maps = await buildAllModeFrequencyMaps(processed, color, signal);
@@ -75,7 +75,7 @@
 			if (moveResult) lastMovedSquares = [moveResult.from, moveResult.to];
 			seenFens.add(normalizeFenForLookup(chessInstance.fen()));
 		}
-		const sideToMove: 'white' | 'black' = chessInstance.turn() === 'w' ? 'white' : 'black';
+		const sideToMove: PlayerColor = chessInstance.turn() === 'w' ? PlayerColor.White : PlayerColor.Black;
 		return { fen: chessInstance.fen(), lastMovedSquares, sideToMove, seenFens };
 	});
 
@@ -118,7 +118,7 @@
 
 	let profileUrl = $derived(
 		profile
-			? platform === 'lichess'
+			? platform === Platform.Lichess
 				? `https://lichess.org/@/${encodeURIComponent(profile.username)}`
 				: `https://www.chess.com/member/${encodeURIComponent(profile.username)}`
 			: null
@@ -132,8 +132,8 @@
 		moveHistory = [];
 		errorMessage = '';
 
-		const gamesApiPath = platform === 'lichess' ? '/api/games/lichess' : '/api/games/chess-com';
-		const profileApiPath = platform === 'lichess' ? '/api/profile/lichess' : '/api/profile/chess-com';
+		const gamesApiPath = platform === Platform.Lichess ? '/api/games/lichess' : '/api/games/chess-com';
+		const profileApiPath = platform === Platform.Lichess ? '/api/profile/lichess' : '/api/profile/chess-com';
 		const encodedUsername = encodeURIComponent(username);
 
 		loading = true;
@@ -142,17 +142,17 @@
 		const elapsedTimer = setInterval(() => { loadingElapsed = (Date.now() - startTime) / 1000; }, 100);
 
 		try {
-			const makeGamesParams = (color: 'white' | 'black') =>
+			const makeGamesParams = (color: PlayerColor) =>
 				new URLSearchParams({ username, color, max: String(maxGames) });
 
 			loadingStatus = 'Fetching games…';
 			const [whiteResponse, blackResponse, profileResponse] = await Promise.all([
-				fetch(`${gamesApiPath}?${makeGamesParams('white')}`),
-				fetch(`${gamesApiPath}?${makeGamesParams('black')}`),
+				fetch(`${gamesApiPath}?${makeGamesParams(PlayerColor.White)}`),
+				fetch(`${gamesApiPath}?${makeGamesParams(PlayerColor.Black)}`),
 				fetch(`${profileApiPath}?username=${encodedUsername}`),
 			]);
 
-			const primaryResponse = playerColor === 'white' ? whiteResponse : blackResponse;
+			const primaryResponse = playerColor === PlayerColor.White ? whiteResponse : blackResponse;
 			if (!primaryResponse.ok) {
 				const body = await primaryResponse.json().catch(() => ({})) as { message?: string };
 				throw new Error(body.message ?? `Error ${primaryResponse.status}`);
@@ -210,7 +210,7 @@
 		selectedMode = selectedMode === mode ? null : mode;
 	}
 
-	function selectColor(color: 'white' | 'black'): void {
+	function selectColor(color: PlayerColor): void {
 		if (playerColor === color) return;
 		playerColor = color;
 		moveHistory = [];

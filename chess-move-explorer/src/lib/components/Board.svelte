@@ -2,18 +2,17 @@
 	import type { Api as ChessgroundApi } from 'chessground/api';
 	import type { Key } from 'chessground/types';
 	import { PlayerColor } from '$lib/types';
-	import type { PlayerColor as PlayerColorT } from '$lib/types';
 
 	interface BoardProps {
 		fen: string;
-		orientation: PlayerColorT;
+		orientation: PlayerColor;
 		lastMove?: [string, string];
 		hoverSquares?: [string, string];
 	}
 
 	interface Props {
 		fen: string;
-		orientation?: PlayerColorT;
+		orientation?: PlayerColor;
 		lastMove?: [string, string];
 		hoverSquares?: [string, string];
 	}

@@ -1,7 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { error, json } from '@sveltejs/kit';
 import type { Game } from '$lib/chess/move-tree';
-import { PlayerColor } from '$lib/types';
+import { PlayerColor, PlayerResult } from '$lib/types';
 
 interface LichessGame {
 	variant: string;
@@ -13,9 +13,9 @@ interface LichessGame {
 function computePlayerResult(
 	winner: PlayerColor | undefined,
 	playerColor: PlayerColor
-): 'win' | 'draw' | 'loss' {
-	if (!winner) return 'draw';
-	return winner === playerColor ? 'win' : 'loss';
+): PlayerResult {
+	if (!winner) return PlayerResult.Draw;
+	return winner === playerColor ? PlayerResult.Win : PlayerResult.Loss;
 }
 
 export const GET: RequestHandler = async ({ url }) => {

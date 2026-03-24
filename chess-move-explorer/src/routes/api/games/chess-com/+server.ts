@@ -1,7 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { error, json } from '@sveltejs/kit';
 import type { Game } from '$lib/chess/move-tree';
-import { PlayerColor } from '$lib/types';
+import { PlayerColor, PlayerResult } from '$lib/types';
 
 interface ChessComArchivesResponse {
 	archives: string[];
@@ -60,10 +60,10 @@ function extractMovesFromPgn(pgn: string): string {
 function computePlayerResult(
 	pgnResult: string,
 	playerColor: PlayerColor
-): 'win' | 'draw' | 'loss' | null {
-	if (pgnResult === '1/2-1/2') return 'draw';
-	if (pgnResult === '1-0') return playerColor === PlayerColor.White ? 'win' : 'loss';
-	if (pgnResult === '0-1') return playerColor === PlayerColor.Black ? 'win' : 'loss';
+): PlayerResult | null {
+	if (pgnResult === '1/2-1/2') return PlayerResult.Draw;
+	if (pgnResult === '1-0') return playerColor === PlayerColor.White ? PlayerResult.Win : PlayerResult.Loss;
+	if (pgnResult === '0-1') return playerColor === PlayerColor.Black ? PlayerResult.Win : PlayerResult.Loss;
 	return null; // abandoned or unknown — skip
 }
 

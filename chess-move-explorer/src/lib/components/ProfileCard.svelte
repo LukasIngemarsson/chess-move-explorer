@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { PlayerColor } from '$lib/types';
-	import type { PlayerColor as PlayerColorT, Profile } from '$lib/types';
+	import type { Profile } from '$lib/types';
 	import ToggleGroup from './ToggleGroup.svelte';
 
 	const colorOptions = [
@@ -11,9 +11,9 @@
 	interface Props {
 		profile: Profile;
 		profileUrl: string | null;
-		playerColor: PlayerColorT;
+		playerColor: PlayerColor;
 		selectedMode: string | null;
-		onSelectColor: (color: PlayerColorT) => void;
+		onSelectColor: (color: PlayerColor) => void;
 		onSelectMode: (mode: string) => void;
 	}
 
@@ -25,7 +25,7 @@
 		<a href={profileUrl} target="_blank" rel="noopener noreferrer" class="font-semibold link link-hover">
 			{profile.username}
 		</a>
-		<ToggleGroup options={colorOptions} value={playerColor} onChange={(v) => onSelectColor(v as PlayerColorT)} />
+		<ToggleGroup options={colorOptions} value={playerColor} onChange={(v) => onSelectColor(v as PlayerColor)} />
 		<div class="flex flex-wrap gap-2">
 			{#each profile.ratings as { mode, rating }}
 				{#if rating !== null}

@@ -1,5 +1,5 @@
 import { Chess } from 'chess.js';
-import { PlayerColor } from '$lib/types';
+import { PlayerColor, PlayerResult } from '$lib/types';
 
 export interface MoveFrequency {
 	algebraicNotation: string;
@@ -29,7 +29,7 @@ export interface FrequencyMaps {
 
 export interface Game {
 	moves: string;
-	playerResult: 'win' | 'draw' | 'loss';
+	playerResult: PlayerResult;
 	mode: string;
 }
 
@@ -41,7 +41,7 @@ export interface ProcessedGame {
 	/** Normalized FEN before each move, parallel to moves[]. */
 	positions: string[];
 	moves: string[];
-	playerResult: 'win' | 'draw' | 'loss';
+	playerResult: PlayerResult;
 	mode: string;
 }
 
@@ -156,9 +156,9 @@ export async function buildAllModeFrequencyMaps(
 				const existing = positionCounts.get(move) ?? { count: 0, wins: 0, draws: 0, losses: 0 };
 				positionCounts.set(move, {
 					count: existing.count + 1,
-					wins: existing.wins + (game.playerResult === 'win' ? 1 : 0),
-					draws: existing.draws + (game.playerResult === 'draw' ? 1 : 0),
-					losses: existing.losses + (game.playerResult === 'loss' ? 1 : 0),
+					wins: existing.wins + (game.playerResult === PlayerResult.Win ? 1 : 0),
+					draws: existing.draws + (game.playerResult === PlayerResult.Draw ? 1 : 0),
+					losses: existing.losses + (game.playerResult === PlayerResult.Loss ? 1 : 0),
 				});
 				targetMap.set(fen, positionCounts);
 			}

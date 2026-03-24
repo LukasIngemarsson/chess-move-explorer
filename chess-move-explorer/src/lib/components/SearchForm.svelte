@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { Platform } from '$lib/types';
-	import type { Platform as PlatformT } from '$lib/types';
 	import ToggleGroup from './ToggleGroup.svelte';
 
 	const platformOptions = [
@@ -9,7 +8,7 @@
 	];
 
 	interface Props {
-		platform: PlatformT;
+		platform: Platform;
 		username: string;
 		maxGames: number;
 		loading: boolean;

@@ -63,6 +63,7 @@
 
 	// moveHistory is the single source of truth; board state is fully derived from it.
 	let moveHistory = $state<string[]>([]);
+	let moveLogEl = $state<HTMLElement | null>(null);
 
 	// --- Derived board state ---
 	let boardState = $derived.by(() => {
@@ -220,6 +221,7 @@
 		moveHistory = [...moveHistory, algebraicNotation];
 		hoveredMove = null;
 		await tick();
+		if (moveLogEl) moveLogEl.scrollTop = moveLogEl.scrollHeight;
 		hoveredMove = document.querySelector('[data-move]:hover')?.getAttribute('data-move') ?? null;
 	}
 
@@ -317,6 +319,7 @@
 						</div>
 						<MoveLog
 							{moveHistory}
+							bind:el={moveLogEl}
 							onJump={(i) => { moveHistory = moveHistory.slice(0, i + 1); }}
 						/>
 					</div>

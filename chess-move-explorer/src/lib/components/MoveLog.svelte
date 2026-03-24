@@ -1,17 +1,11 @@
 <script lang="ts">
 	interface Props {
 		moveHistory: string[];
+		el?: HTMLElement | null;
 		onJump: (index: number) => void;
 	}
 
-	let { moveHistory, onJump }: Props = $props();
-
-	let el = $state<HTMLElement | null>(null);
-
-	$effect(() => {
-		moveHistory; // track changes
-		if (el) el.scrollTop = el.scrollHeight;
-	});
+	let { moveHistory, el = $bindable(null), onJump }: Props = $props();
 </script>
 
 {#if moveHistory.length > 0}

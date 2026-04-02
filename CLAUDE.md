@@ -24,12 +24,13 @@ SvelteKit 2 + Svelte 5 (runes mode enforced globally). Tailwind CSS 4 + DaisyUI 
 
 **Data flow:**
 1. `+page.svelte` calls a SvelteKit server route (`/api/games/lichess` or `/api/games/chess-com`) which proxies the external API server-side (avoids CORS, normalizes responses).
-2. The server route returns `{ games: { moves: string, playerResult: 'win'|'draw'|'loss' }[] }`.
-3. `buildMoveFrequencyMap()` in `src/lib/chess/move-tree.ts` replays every game with `chess.js`, recording which moves were played at each FEN position into two `MoveFrequencyMap`s — one for the player, one for the opponent.
+2. The server route returns `{ games: Game[] }` (see `Game` in `move-tree.ts`).
+3. `processGames()` replays every game with `chess.js` once, extracting per-move FEN sequences. `buildAllModeFrequencyMaps()` then builds frequency maps for every mode in a single pass — one map for the player, one for the opponent.
 4. `+page.svelte` holds `moveHistory: string[]` as the single source of truth. All board state (`fen`, `lastMovedSquares`, `sideToMove`) is `$derived.by` from it. The correct map (player vs opponent) is selected based on whose turn it is.
 
 **Key files:**
-- `src/lib/chess/move-tree.ts` — `Game`, `MoveFrequency`, `MoveFrequencyMap` types; `buildMoveFrequencyMap()` and `mergeFrequencyMaps()`.
+- `src/lib/types.ts` — `Platform`, `PlayerColor`, `PlayerResult` const object enums and `Profile` interface.
+- `src/lib/chess/move-tree.ts` — `Game`, `ProcessedGame`, `MoveFrequency`, `MoveFrequencyMap` types; `processGames()` and `buildAllModeFrequencyMaps()`.
 - `src/routes/api/games/lichess/+server.ts` — proxies Lichess NDJSON API, filters by color, normalizes result.
 - `src/routes/api/games/chess-com/+server.ts` — fetches monthly archives in parallel, parses PGNs (strips move numbers, clock annotations, variations), normalizes result.
 - `src/lib/components/Board.svelte` — wraps chessground via a Svelte action (no `$effect`). The action's `update` callback handles prop changes; `latestBoardProps` handles the async import race.
